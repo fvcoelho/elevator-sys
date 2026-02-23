@@ -4,38 +4,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an elevator control system project. The codebase will implement elevator scheduling, control logic, and potentially a user interface for managing elevator operations.
+This is a minimal .NET 8 elevator control system implementing a single elevator serving floors 1-10 with FIFO (First-In-First-Out) scheduling and thread-safe operations. The system features a console-based interface for requesting floors and monitoring elevator status.
 
 ## Development Setup
 
-*Note: This section will be populated once the project structure is established.*
+This project uses .NET 8, xUnit for testing, and FluentAssertions for test assertions.
 
 ### Common Commands
 
 ```bash
 # Build the project
-# [To be added based on chosen build system]
+dotnet build
 
-# Run tests
-# [To be added based on chosen test framework]
+# Run tests (19 tests)
+dotnet test
 
-# Run linter
-# [To be added based on chosen linter]
+# Run the application
+dotnet run --project src/ElevatorSystem
 
-# Start development server
-# [To be added based on chosen framework]
+# Build in Release mode
+dotnet build --configuration Release
 ```
 
 ## Architecture
 
-*This section will be updated as the architecture evolves.*
+The system uses a simple, straightforward architecture with no dependency injection or complex frameworks - just clear, maintainable code.
 
 ### Core Components
 
-- **Elevator Control Logic**: Handles elevator movement, scheduling algorithms (e.g., SCAN, LOOK, nearest-first)
-- **Request Queue Management**: Manages and prioritizes elevator requests from different floors
-- **State Management**: Tracks elevator positions, directions, and door states
-- **UI Layer**: Provides interface for users to interact with the elevator system (if applicable)
+- **Elevator** (`src/ElevatorSystem/Elevator.cs`): Core elevator logic with thread-safe state management using locks and `ConcurrentQueue` for FIFO target handling
+- **ElevatorController** (`src/ElevatorSystem/ElevatorController.cs`): Orchestrates request processing with a single background processing loop
+- **Program** (`src/ElevatorSystem/Program.cs`): Interactive console interface for user commands (Request, Status, Quit)
+- **Enums**: `ElevatorState` (IDLE, MOVING_UP, MOVING_DOWN, DOOR_OPEN) and `Direction` (NONE, UP, DOWN)
 
 ### Key Considerations
 
@@ -46,7 +46,19 @@ This is an elevator control system project. The codebase will implement elevator
 
 ## Coding Standards
 
-- Use TypeScript/shadcn components for any .tsx files (per global instructions)
-- Implement proper error handling for all elevator control operations
-- Ensure thread-safety for concurrent elevator operations
-- Add appropriate logging for state transitions and critical operations
+- **C#/.NET 8**: Main language for this project
+- **Thread Safety**: Use `ConcurrentQueue<T>` for lock-free queues and `lock` for state synchronization
+- **Error Handling**: Validate floor ranges and throw appropriate exceptions
+- **Testing**: Maintain comprehensive unit test coverage (currently 19/19 tests passing)
+- **Async/Await**: Use async methods for I/O and delays
+- **Console Output**: Use `Console.WriteLine` for status updates and logging
+
+## Implementation Details
+
+- **Scheduling**: Pure FIFO - requests processed strictly in order received
+- **Configuration**: Floors 1-10, 2s door open time, 1.5s per floor travel time
+- **Thread Safety Strategy**:
+  - `Elevator.CurrentFloor` and `Elevator.State`: Lock-protected
+  - Target floors and request queues: `ConcurrentQueue<int>` (lock-free)
+  - Single processing loop thread
+- **No optimization**: Elevator doesn't combine nearby requests or optimize routes
