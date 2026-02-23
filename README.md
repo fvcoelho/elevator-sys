@@ -7,8 +7,8 @@ A minimal .NET 8 console application simulating a single elevator serving floors
 - **Single Elevator**: Serves floors 1-10
 - **FIFO Scheduling**: Requests are processed in the order they are received
 - **Thread-Safe Operations**: Uses `ConcurrentQueue` for lock-free request handling and locks for state management
-- **Console Interface**: Interactive command-line interface for requesting floors and viewing status
-- **Comprehensive Tests**: 19 unit tests covering all functionality
+- **Console Interface**: Interactive command-line interface with instant key response for requesting floors
+- **Comprehensive Tests**: 18 unit tests covering all functionality
 
 ## Architecture
 
@@ -25,9 +25,9 @@ A minimal .NET 8 console application simulating a single elevator serving floors
    - Single background processing loop
 
 3. **Program** (`Program.cs`)
-   - Console interface for user interaction
-   - Displays real-time status
-   - Handles user commands (Request, Status, Quit)
+   - Console interface for user interaction with instant key response
+   - Automatically displays pending queue after operations
+   - Handles user commands (floor requests via keys 1-0, Quit)
 
 ### Configuration
 
@@ -80,35 +80,37 @@ Once the application starts, you'll see an interactive menu with instant key res
 ```
 === ELEVATOR SYSTEM STARTED ===
 
-Press keys [1-9] for floors 1-9, [0] for floor 10, [S] for status, [Q] to quit
-
-Floor: 1 | State: IDLE | Queue: [] | Pending: 0
-Press: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit
+Press: [1-9] Floor 1-9 | [0] Floor 10 | [Q] Quit
 ```
 
 ### Commands
 
 - **Keys 1-9**: Request floors 1-9 (instant, no Enter key needed)
 - **Key 0**: Request floor 10
-- **S**: Refresh status display
 - **Q**: Shut down the elevator system
+
+The pending request queue is automatically displayed after each elevator operation completes.
 
 ### Example Session
 
 ```
 [User presses '5']
 Requesting floor 5...
-Request received for floor 5
-Added floor 5 to elevator target queue
+Request received for floor 5 → Pending: [5]
+Added floor 5 → Queue: [5]
+Elevator moved up to floor 5
+Doors are OPEN at floor 5
+Doors are CLOSED (IDLE) at floor 5
+ → Pending: []
 
 [User presses '8']
 Requesting floor 8...
-Request received for floor 8
-
-[User presses 'S']
-[Refreshing status...]
-
-Floor: 5 | State: DOOR_OPEN | Queue: [8] | Pending: 0
+Request received for floor 8 → Pending: [8]
+Added floor 8 → Queue: [8]
+Elevator moved up to floor 8
+Doors are OPEN at floor 8
+Doors are CLOSED (IDLE) at floor 8
+ → Pending: []
 ```
 
 ## Testing
@@ -128,7 +130,7 @@ The project includes comprehensive unit tests:
 - Integration with elevator
 - Concurrent request processing (20 concurrent requests)
 
-**Test Results**: 19/19 tests passing
+**Test Results**: 18/18 tests passing
 
 ## Design Decisions
 
