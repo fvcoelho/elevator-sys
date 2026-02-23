@@ -82,13 +82,7 @@ Once the application starts, you'll see an interactive menu with instant key res
 
 Press keys [1-9] for floors 1-9, [0] for floor 10, [S] for status, [Q] to quit
 
-========================================
-Current Floor: 1
-State: IDLE
-Target Queue: []
-Pending Requests: 0
-========================================
-
+Floor: 1 | State: IDLE | Queue: [] | Pending: 0
 Press: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit
 ```
 
@@ -114,12 +108,7 @@ Request received for floor 8
 [User presses 'S']
 [Refreshing status...]
 
-========================================
-Current Floor: 5
-State: DOOR_OPEN
-Target Queue: [8]
-Pending Requests: 0
-========================================
+Floor: 5 | State: DOOR_OPEN | Queue: [8] | Pending: 0
 ```
 
 ## Testing

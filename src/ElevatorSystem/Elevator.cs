@@ -129,7 +129,8 @@ public class Elevator
         }
 
         _targetFloors.Enqueue(floor);
-        Console.WriteLine($"Added floor {floor} to elevator target queue");
+        var queue = GetTargets();
+        Console.WriteLine($"Added floor {floor} → Queue: [{string.Join(", ", queue)}]");
     }
 
     public bool TryGetNextTarget(out int floor)

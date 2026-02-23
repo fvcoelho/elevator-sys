@@ -20,7 +20,8 @@ public class ElevatorController
         }
 
         _requestQueue.Enqueue(floor);
-        Console.WriteLine($"Request received for floor {floor}");
+        var pending = _requestQueue.ToArray();
+        Console.WriteLine($"Request received for floor {floor} → Pending: [{string.Join(", ", pending)}]");
     }
 
     public async Task ProcessRequestsAsync(CancellationToken cancellationToken)
@@ -67,9 +68,6 @@ public class ElevatorController
         var targets = _elevator.GetTargets();
         var pendingRequests = _requestQueue.Count;
 
-        return $"Current Floor: {_elevator.CurrentFloor}\n" +
-               $"State: {_elevator.State}\n" +
-               $"Target Queue: [{string.Join(", ", targets)}]\n" +
-               $"Pending Requests: {pendingRequests}";
+        return $"Floor: {_elevator.CurrentFloor} | State: {_elevator.State} | Queue: [{string.Join(", ", targets)}] | Pending: {pendingRequests}";
     }
 }

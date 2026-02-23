@@ -29,7 +29,7 @@ public class ElevatorControllerTests
 
         // Assert
         var status = controller.GetStatus();
-        status.Should().Contain("Pending Requests: 1");
+        status.Should().Contain("Pending: 1");
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class ElevatorControllerTests
         var timeout = TimeSpan.FromSeconds(2);
         var startTime = DateTime.UtcNow;
 
-        while ((elevator.HasTargets() || controller.GetStatus().Contains("Pending Requests: 0") == false)
+        while ((elevator.HasTargets() || controller.GetStatus().Contains("Pending: 0") == false)
                && DateTime.UtcNow - startTime < timeout)
         {
             await Task.Delay(50);
@@ -127,7 +127,7 @@ public class ElevatorControllerTests
         // Assert - All requests should be processed
         elevator.HasTargets().Should().BeFalse("all targets should be processed");
         var status = controller.GetStatus();
-        status.Should().Contain("Pending Requests: 0", "all requests should be processed");
+        status.Should().Contain("Pending: 0", "all requests should be processed");
     }
 
     [Fact]
@@ -164,7 +164,7 @@ public class ElevatorControllerTests
         var timeout = TimeSpan.FromSeconds(5);
         var startTime = DateTime.UtcNow;
 
-        while ((elevator.HasTargets() || controller.GetStatus().Contains("Pending Requests: 0") == false)
+        while ((elevator.HasTargets() || controller.GetStatus().Contains("Pending: 0") == false)
                && DateTime.UtcNow - startTime < timeout)
         {
             await Task.Delay(100);
@@ -173,7 +173,7 @@ public class ElevatorControllerTests
         // Assert - All requests should be processed
         elevator.HasTargets().Should().BeFalse("all targets should be processed");
         var status = controller.GetStatus();
-        status.Should().Contain("Pending Requests: 0", "all requests should be processed");
+        status.Should().Contain("Pending: 0", "all requests should be processed");
 
         // Cleanup
         cts.Cancel();
@@ -199,9 +199,9 @@ public class ElevatorControllerTests
         var status = controller.GetStatus();
 
         // Assert
-        status.Should().Contain($"Current Floor: {INITIAL_FLOOR}");
+        status.Should().Contain($"Floor: {INITIAL_FLOOR}");
         status.Should().Contain($"State: {ElevatorState.IDLE}");
-        status.Should().Contain("Pending Requests:");
+        status.Should().Contain("Pending:");
     }
 
     [Fact]

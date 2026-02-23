@@ -29,14 +29,13 @@ var processingTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine("=== ELEVATOR SYSTEM STARTED ===\n");
-Console.WriteLine("Press keys [1-9] for floors 1-9, [0] for floor 10, [S] for status, [Q] to quit");
 
 while (true)
 {
-    Console.WriteLine("\n" + new string('=', 40));
-    Console.WriteLine(controller.GetStatus());
-    Console.WriteLine(new string('=', 40));
-    Console.WriteLine("\nPress: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit");
+    
+    //Console.WriteLine($"\n{controller.GetStatus()}");
+
+    Console.WriteLine("Press: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit");
 
     var key = Console.ReadKey(intercept: true);
     var keyChar = char.ToUpperInvariant(key.KeyChar);
@@ -87,7 +86,8 @@ while (true)
                 return;
 
             case 'S':
-                Console.WriteLine("\n[Refreshing status...]");
+                //Console.WriteLine($"\n{controller.GetStatus()}");
+                //Console.WriteLine("\n[Refreshing status...]");
                 // Status will be displayed in next loop iteration
                 break;
 
