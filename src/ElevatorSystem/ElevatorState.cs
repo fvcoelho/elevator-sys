@@ -2,8 +2,8 @@ namespace ElevatorSystem;
 
 public enum ElevatorState
 {
-    IDLE,
-    MOVING_UP,
-    MOVING_DOWN,
+    IDLE, //DOOR IS CLOSED
+    MOVING_UP, //DOOR IS CLOSED
+    MOVING_DOWN, //DOOR IS CLOSED
     DOOR_OPEN
 }

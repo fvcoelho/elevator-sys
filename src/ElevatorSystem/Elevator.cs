@@ -110,16 +110,16 @@ public class Elevator
     public async Task OpenDoor()
     {
         State = ElevatorState.DOOR_OPEN;
-        Console.WriteLine($"Doors opening at floor {CurrentFloor}");
+        Console.WriteLine($"Doors are OPEN at floor {CurrentFloor}");
         await Task.Delay(DoorOpenMs);
     }
 
     public async Task CloseDoor()
     {
-        Console.WriteLine($"Doors closing at floor {CurrentFloor}");
+        Console.WriteLine($"Doors are CLOSED (IDLE) at floor {CurrentFloor}");
         State = ElevatorState.IDLE;
         await Task.CompletedTask;
-    }
+    }   
 
     public void AddRequest(int floor)
     {

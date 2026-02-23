@@ -29,14 +29,10 @@ var processingTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine("=== ELEVATOR SYSTEM STARTED ===\n");
+Console.WriteLine("Press: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit");
 
 while (true)
 {
-    
-    //Console.WriteLine($"\n{controller.GetStatus()}");
-
-    Console.WriteLine("Press: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit");
-
     var key = Console.ReadKey(intercept: true);
     var keyChar = char.ToUpperInvariant(key.KeyChar);
 
