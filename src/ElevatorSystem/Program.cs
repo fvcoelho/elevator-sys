@@ -29,7 +29,7 @@ var processingTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine("=== ELEVATOR SYSTEM STARTED ===\n");
-Console.WriteLine("Press: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit");
+Console.WriteLine("Press: [1-9] Floor 1-9 | [0] Floor 10 | [Q] Quit");
 
 while (true)
 {
@@ -81,14 +81,8 @@ while (true)
                 Console.WriteLine("Elevator system stopped. Goodbye!");
                 return;
 
-            case 'S':
-                //Console.WriteLine($"\n{controller.GetStatus()}");
-                //Console.WriteLine("\n[Refreshing status...]");
-                // Status will be displayed in next loop iteration
-                break;
-
             default:
-                Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Use keys 1-9, 0 (floor 10), S (status), or Q (quit).");
+                Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Use keys 1-9, 0 (floor 10) or Q (quit).");
                 break;
         }
     }

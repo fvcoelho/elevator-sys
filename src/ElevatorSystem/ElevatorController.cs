@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Drawing;
 
 namespace ElevatorSystem;
 
@@ -55,6 +56,8 @@ public class ElevatorController
                     // Open and close doors
                     await _elevator.OpenDoor();
                     await _elevator.CloseDoor();
+
+                    Console.WriteLine($" → Pending: [{string.Join(", ", _requestQueue.ToArray())}]");
                 }
             }
 
@@ -63,11 +66,4 @@ public class ElevatorController
         }
     }
 
-    public string GetStatus()
-    {
-        var targets = _elevator.GetTargets();
-        var pendingRequests = _requestQueue.Count;
-
-        return $"Floor: {_elevator.CurrentFloor} | State: {_elevator.State} | Queue: [{string.Join(", ", targets)}] | Pending: {pendingRequests}";
-    }
 }
