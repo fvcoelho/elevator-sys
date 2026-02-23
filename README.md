@@ -75,10 +75,12 @@ dotnet run
 
 ## Usage
 
-Once the application starts, you'll see an interactive menu:
+Once the application starts, you'll see an interactive menu with instant key response:
 
 ```
 === ELEVATOR SYSTEM STARTED ===
+
+Press keys [1-9] for floors 1-9, [0] for floor 10, [S] for status, [Q] to quit
 
 ========================================
 Current Floor: 1
@@ -87,33 +89,37 @@ Target Queue: []
 Pending Requests: 0
 ========================================
 
-Commands: [R]equest | [S]tatus | [Q]uit
->
+Press: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit
 ```
 
 ### Commands
 
-- **R** (Request): Request the elevator to a specific floor (1-10)
-- **S** (Status): Display current elevator status
-- **Q** (Quit): Shut down the elevator system
+- **Keys 1-9**: Request floors 1-9 (instant, no Enter key needed)
+- **Key 0**: Request floor 10
+- **S**: Refresh status display
+- **Q**: Shut down the elevator system
 
 ### Example Session
 
 ```
-> R
-Enter floor number (1-10): 5
+[User presses '5']
+Requesting floor 5...
 Request received for floor 5
 Added floor 5 to elevator target queue
 
-> R
-Enter floor number (1-10): 8
+[User presses '8']
+Requesting floor 8...
 Request received for floor 8
 
-> S
+[User presses 'S']
+[Refreshing status...]
+
+========================================
 Current Floor: 5
 State: DOOR_OPEN
 Target Queue: [8]
 Pending Requests: 0
+========================================
 ```
 
 ## Testing

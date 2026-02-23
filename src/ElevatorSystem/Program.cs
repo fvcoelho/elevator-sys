@@ -29,70 +29,72 @@ var processingTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine("=== ELEVATOR SYSTEM STARTED ===\n");
+Console.WriteLine("Press keys [1-9] for floors 1-9, [0] for floor 10, [S] for status, [Q] to quit");
 
 while (true)
 {
     Console.WriteLine("\n" + new string('=', 40));
     Console.WriteLine(controller.GetStatus());
     Console.WriteLine(new string('=', 40));
-    Console.WriteLine("\nCommands: [R]equest | [S]tatus | [Q]uit");
-    Console.Write("> ");
+    Console.WriteLine("\nPress: [1-9] Floor 1-9 | [0] Floor 10 | [S] Status | [Q] Quit");
 
-    var input = Console.ReadLine()?.Trim().ToUpperInvariant();
+    var key = Console.ReadKey(intercept: true);
+    var keyChar = char.ToUpperInvariant(key.KeyChar);
 
-    if (string.IsNullOrEmpty(input))
+    // Handle floor number keys 1-9 and 0 (for floor 10)
+    if (keyChar >= '1' && keyChar <= '9')
     {
-        continue;
+        int floor = keyChar - '0'; // Convert char to int (1-9)
+        try
+        {
+            Console.WriteLine($"\nRequesting floor {floor}...");
+            controller.RequestElevator(floor);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"\nError: {ex.Message}");
+        }
     }
-
-    switch (input)
+    else if (keyChar == '0')
     {
-        case "Q":
-        case "QUIT":
-        case "EXIT":
-            Console.WriteLine("\nShutting down elevator system...");
-            cts.Cancel();
-            try
-            {
-                await processingTask;
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected
-            }
-            Console.WriteLine("Elevator system stopped. Goodbye!");
-            return;
-
-        case "S":
-        case "STATUS":
-            // Status will be displayed in next loop iteration
-            break;
-
-        case "R":
-        case "REQUEST":
-            Console.Write("Enter floor number (1-10): ");
-            var floorInput = Console.ReadLine()?.Trim();
-
-            if (int.TryParse(floorInput, out int floor))
-            {
+        // 0 key represents floor 10
+        try
+        {
+            Console.WriteLine("\nRequesting floor 10...");
+            controller.RequestElevator(10);
+        }
+        catch (ArgumentException ex)
+        {
+            Console.WriteLine($"\nError: {ex.Message}");
+        }
+    }
+    else
+    {
+        switch (keyChar)
+        {
+            case 'Q':
+                Console.WriteLine("\n\nShutting down elevator system...");
+                cts.Cancel();
                 try
                 {
-                    controller.RequestElevator(floor);
+                    await processingTask;
                 }
-                catch (ArgumentException ex)
+                catch (OperationCanceledException)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
+                    // Expected
                 }
-            }
-            else
-            {
-                Console.WriteLine("Invalid input. Please enter a number between 1 and 10.");
-            }
-            break;
+                Console.WriteLine("Elevator system stopped. Goodbye!");
+                return;
 
-        default:
-            Console.WriteLine("Unknown command. Please use R (Request), S (Status), or Q (Quit).");
-            break;
+            case 'S':
+                Console.WriteLine("\n[Refreshing status...]");
+                // Status will be displayed in next loop iteration
+                break;
+
+            default:
+                Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Use keys 1-9, 0 (floor 10), S (status), or Q (quit).");
+                break;
+        }
     }
 
     // Small delay to allow status updates to be visible
