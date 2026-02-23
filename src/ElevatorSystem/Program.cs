@@ -4,7 +4,7 @@ using ElevatorSystem;
 const int MIN_FLOOR = 1;
 const int MAX_FLOOR = 10;
 const int INITIAL_FLOOR = 1;
-const int DOOR_OPEN_MS = 2000;      // 2 seconds
+const int DOOR_OPEN_MS = 3000;      // 3 seconds
 const int FLOOR_TRAVEL_MS = 1500;   // 1.5 seconds per floor
 
 // Create elevator and controller instances

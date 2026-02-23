@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Drawing;
 
 namespace ElevatorSystem;
 
@@ -20,8 +19,16 @@ public class ElevatorController
             throw new ArgumentException($"Floor must be between {_elevator.MinFloor} and {_elevator.MaxFloor}");
         }
 
-        _requestQueue.Enqueue(floor);
+        // Check if the last request in queue is the same floor
         var pending = _requestQueue.ToArray();
+        if (pending.Length > 0 && pending[^1] == floor)
+        {
+            Console.WriteLine($"Request for floor {floor} ignored (already last in queue) → Pending: [{string.Join(", ", pending)}]");
+            return;
+        }
+
+        _requestQueue.Enqueue(floor);
+        pending = _requestQueue.ToArray();
         Console.WriteLine($"Request received for floor {floor} → Pending: [{string.Join(", ", pending)}]");
     }
 
@@ -57,7 +64,11 @@ public class ElevatorController
                     await _elevator.OpenDoor();
                     await _elevator.CloseDoor();
 
-                    Console.WriteLine($" → Pending: [{string.Join(", ", _requestQueue.ToArray())}]");
+                    if (!_requestQueue.IsEmpty)
+                    {
+                        var snapshot = _requestQueue.ToArray();
+                        Console.WriteLine($" → Pending floors: [{string.Join(", ", snapshot)}]");
+                    }
                 }
             }
 
