@@ -146,7 +146,7 @@ var fileMonitorTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine($"=== ELEVATOR SYSTEM ({ELEVATOR_COUNT} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
-Console.WriteLine("Press [R] REQUEST | [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [Q] QUIT");
+Console.WriteLine("Press [R] REQUEST | [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [M] MAINTENANCE | [Q] QUIT");
 Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
 Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}");
 Console.WriteLine($"Current Algorithm: {system.Algorithm}\n");
@@ -255,6 +255,43 @@ while (true)
             Console.WriteLine($"Active Algorithm: {system.Algorithm}\n");
             break;
 
+        case 'M':
+            // Maintenance mode
+            Console.WriteLine("\n=== MAINTENANCE MODE ===");
+            for (int i = 0; i < system.ElevatorCount; i++)
+            {
+                var elev = system.GetElevator(i);
+                var label = (char)('A' + i);
+                var modeLabel = elev.InMaintenance ? "IN MAINTENANCE" : "Active";
+                Console.WriteLine($"  [{label}] Elevator {label}: Floor {elev.CurrentFloor} | {modeLabel}");
+            }
+            Console.Write("\nSelect elevator (A-" + (char)('A' + system.ElevatorCount - 1) + "): ");
+
+            var mKey = Console.ReadKey(intercept: true);
+            Console.WriteLine();
+            var mIndex = char.ToUpper(mKey.KeyChar) - 'A';
+
+            if (mIndex < 0 || mIndex >= system.ElevatorCount)
+            {
+                Console.WriteLine("Invalid elevator selection.\n");
+                break;
+            }
+
+            var selectedElevator = system.GetElevator(mIndex);
+            var selectedLabel = (char)('A' + mIndex);
+
+            if (selectedElevator.InMaintenance)
+            {
+                selectedElevator.ExitMaintenance();
+                Console.WriteLine($"Elevator {selectedLabel} exited maintenance mode.\n");
+            }
+            else
+            {
+                selectedElevator.EnterMaintenance();
+                Console.WriteLine($"Elevator {selectedLabel} entered maintenance mode.\n");
+            }
+            break;
+
         case 'Q':
             // Quit
             Console.WriteLine("\n\nShutting down elevator system...");
@@ -271,7 +308,7 @@ while (true)
             return;
 
         default:
-            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [D] Dispatch | [Q] Quit\n");
+            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [D] Dispatch | [M] Maintenance | [Q] Quit\n");
             break;
     }
 
