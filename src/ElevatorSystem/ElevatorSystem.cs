@@ -42,7 +42,8 @@ public class ElevatorSystem
                 maxFloor: maxFloor,
                 initialFloor: initialFloors[i],
                 doorOpenMs: doorOpenMs,
-                floorTravelMs: floorTravelMs);
+                floorTravelMs: floorTravelMs,
+                label: GetElevatorLabel(i));
 
             _elevators.Add(elevator);
         }
@@ -121,7 +122,7 @@ public class ElevatorSystem
             var targets = elevator.GetTargets();
             var targetStr = targets.Any() ? $"[{string.Join(", ", targets)}]" : "[]";
 
-            status.AppendLine($"Elevator {i}: Floor {elevator.CurrentFloor,-2} | {elevator.State,-12} | Targets: {targetStr}");
+            status.AppendLine($"Elevator {GetElevatorLabel(i)}: Floor {elevator.CurrentFloor,-2} | {elevator.State,-12} | Targets: {targetStr}");
         }
 
         status.AppendLine();
@@ -188,6 +189,12 @@ public class ElevatorSystem
         return Math.Abs(currentFloor - targetFloor);
     }
 
+    private static string GetElevatorLabel(int index)
+    {
+        // Convert 0->A, 1->B, 2->C, 3->D, 4->E
+        return ((char)('A' + index)).ToString();
+    }
+
     public void AssignRequestToElevator(int elevatorIndex, Request request)
     {
         if (elevatorIndex < 0 || elevatorIndex >= _elevators.Count)
@@ -202,7 +209,7 @@ public class ElevatorSystem
         elevator.AddRequest(request.PickupFloor);
         elevator.AddRequest(request.DestinationFloor);
 
-        Console.WriteLine($"[DISPATCH] {request} → Elevator {elevatorIndex} (at floor {elevator.CurrentFloor}, {elevator.State})");
+        Console.WriteLine($"[DISPATCH] {request} → Elevator {GetElevatorLabel(elevatorIndex)} (at floor {elevator.CurrentFloor}, {elevator.State})");
     }
 
     public async Task ProcessRequestsAsync(CancellationToken cancellationToken = default)
@@ -269,7 +276,7 @@ public class ElevatorSystem
                 {
                     await elevator.OpenDoor();
                     await elevator.CloseDoor();
-                    Console.WriteLine($"[ELEVATOR {elevatorIndex}] Arrived at floor {targetFloor}");
+                    Console.WriteLine($"[ELEVATOR {GetElevatorLabel(elevatorIndex)}] Arrived at floor {targetFloor}");
                 }
             }
             else

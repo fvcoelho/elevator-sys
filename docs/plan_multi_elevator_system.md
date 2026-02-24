@@ -163,9 +163,9 @@ Press [S] to view STATUS
 Press [Q] to QUIT
 
 Current Status:
-Elevator 0: Floor 5  | IDLE      | Targets: []
-Elevator 1: Floor 10 | MOVING_UP | Targets: [15, 18]
-Elevator 2: Floor 15 | IDLE      | Targets: []
+Elevator A: Floor 5  | IDLE      | Targets: []
+Elevator B: Floor 10 | MOVING_UP | Targets: [15, 18]
+Elevator C: Floor 15 | IDLE      | Targets: []
 
 Pending Requests: 1
 
@@ -174,7 +174,7 @@ Pending Requests: 1
 > Destination floor (1-20): 17
 
 [SYSTEM] Request #5: Floor 3 → 17 (UP) added to queue
-[DISPATCH] Request #5 → Elevator 0 (at floor 5, IDLE)
+[DISPATCH] Request #5 → Elevator A (at floor 5, IDLE)
 ```
 
 ### 4. Direction Enum
@@ -471,9 +471,9 @@ private async Task WaitForSystemIdle(ElevatorSystem system,
 ```
 === ELEVATOR SYSTEM (3 elevators, floors 1-20) ===
 
-Elevator 0: Floor 1  | IDLE      | Targets: []
-Elevator 1: Floor 10 | MOVING_UP | Targets: [15, 18]
-Elevator 2: Floor 20 | IDLE      | Targets: []
+Elevator A: Floor 1  | IDLE      | Targets: []
+Elevator B: Floor 10 | MOVING_UP | Targets: [15, 18]
+Elevator C: Floor 20 | IDLE      | Targets: []
 
 Pending Requests: 0
 
@@ -486,7 +486,7 @@ Pickup floor (1-20): 5
 Destination floor (1-20): 18
 
 [SYSTEM] Request #1: Floor 5 → 18 (UP) added to queue
-[DISPATCH] Request #1 → Elevator 1 (at floor 10, MOVING_UP)
+[DISPATCH] Request #1 → Elevator B (at floor 10, MOVING_UP)
 Added floor 5 → Queue: [15, 18, 5]
 Added floor 18 → Queue: [15, 18, 5, 18]
 

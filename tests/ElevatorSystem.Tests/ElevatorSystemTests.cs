@@ -208,9 +208,9 @@ public class ElevatorSystemTests
         status.Should().Contain("ELEVATOR SYSTEM");
         status.Should().Contain("3 elevators");
         status.Should().Contain("floors 1-20");
-        status.Should().Contain("Elevator 0:");
-        status.Should().Contain("Elevator 1:");
-        status.Should().Contain("Elevator 2:");
+        status.Should().Contain("Elevator A:");
+        status.Should().Contain("Elevator B:");
+        status.Should().Contain("Elevator C:");
         status.Should().Contain("Pending Requests: 0");
     }
 

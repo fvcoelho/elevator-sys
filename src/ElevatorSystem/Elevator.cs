@@ -13,6 +13,7 @@ public class Elevator
     public int MaxFloor { get; }
     public int DoorOpenMs { get; }
     public int FloorTravelMs { get; }
+    public string Label { get; }
 
     public int CurrentFloor
     {
@@ -50,7 +51,7 @@ public class Elevator
         }
     }
 
-    public Elevator(int minFloor, int maxFloor, int initialFloor, int doorOpenMs, int floorTravelMs)
+    public Elevator(int minFloor, int maxFloor, int initialFloor, int doorOpenMs, int floorTravelMs, string label = "")
     {
         if (initialFloor < minFloor || initialFloor > maxFloor)
         {
@@ -61,6 +62,7 @@ public class Elevator
         MaxFloor = maxFloor;
         DoorOpenMs = doorOpenMs;
         FloorTravelMs = floorTravelMs;
+        Label = label;
         _currentFloor = initialFloor;
         _state = ElevatorState.IDLE;
     }
@@ -83,7 +85,7 @@ public class Elevator
             _currentFloor++;
         }
 
-        Console.WriteLine($"Elevator moved up to floor {CurrentFloor}");
+        Console.WriteLine($"[ELEVATOR {Label}] moved up to floor {CurrentFloor}");
     }
 
     public async Task MoveDown()
@@ -104,19 +106,19 @@ public class Elevator
             _currentFloor--;
         }
 
-        Console.WriteLine($"Elevator moved down to floor {CurrentFloor}");
+        Console.WriteLine($"[ELEVATOR {Label}] moved down to floor {CurrentFloor}");
     }
 
     public async Task OpenDoor()
     {
         State = ElevatorState.DOOR_OPEN;
-        Console.WriteLine($"Doors are OPEN at floor {CurrentFloor}");
+        Console.WriteLine($"[ELEVATOR {Label}] Doors are OPEN at floor {CurrentFloor}");
         await Task.Delay(DoorOpenMs);
     }
 
     public async Task CloseDoor()
     {
-        Console.WriteLine($"Doors are CLOSED (IDLE) at floor {CurrentFloor}");
+        Console.WriteLine($"[ELEVATOR {Label}] Doors are CLOSED (IDLE) at floor {CurrentFloor}");
         State = ElevatorState.IDLE;
         await Task.CompletedTask;
     }   
@@ -130,7 +132,7 @@ public class Elevator
 
         _targetFloors.Enqueue(floor);
         var queue = GetTargets();
-        Console.WriteLine($"Added floor {floor} → Queue: [{string.Join(", ", queue)}]");
+        Console.WriteLine($"[ELEVATOR {Label}] Added floor {floor} → Queue: [{string.Join(", ", queue)}]");
     }
 
     public bool TryGetNextTarget(out int floor)

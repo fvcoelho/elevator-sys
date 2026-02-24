@@ -131,9 +131,9 @@ Press [S] to view STATUS
 Press [Q] to QUIT
 
 Current Status:
-Elevator 0: Floor 1  | IDLE      | Targets: []
-Elevator 1: Floor 10 | IDLE      | Targets: []
-Elevator 2: Floor 20 | IDLE      | Targets: []
+Elevator A: Floor 1  | IDLE      | Targets: []
+Elevator B: Floor 10 | IDLE      | Targets: []
+Elevator C: Floor 20 | IDLE      | Targets: []
 
 Pending Requests: 0
 ```
@@ -153,7 +153,7 @@ Pickup floor (1-20): 5
 Destination floor (1-20): 18
 
 [SYSTEM] Request #1: Floor 5 → 18 (UP) added to queue
-[DISPATCH] Request #1 → Elevator 0 (at floor 1, IDLE)
+[DISPATCH] Request #1 → Elevator A (at floor 1, IDLE)
 Added floor 5 → Queue: [5]
 Added floor 18 → Queue: [5, 18]
 
@@ -170,9 +170,9 @@ Doors are CLOSED (IDLE) at floor 18
 [User presses 'S']
 === ELEVATOR SYSTEM (3 elevators, floors 1-20) ===
 
-Elevator 0: Floor 18 | IDLE      | Targets: []
-Elevator 1: Floor 10 | IDLE      | Targets: []
-Elevator 2: Floor 20 | IDLE      | Targets: []
+Elevator A: Floor 18 | IDLE      | Targets: []
+Elevator B: Floor 10 | IDLE      | Targets: []
+Elevator C: Floor 20 | IDLE      | Targets: []
 
 Pending Requests: 0
 ```
