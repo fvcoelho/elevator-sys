@@ -86,7 +86,7 @@ public class Elevator
             _currentFloor++;
         }
 
-        Console.WriteLine($"[ELEVATOR {Label}] moved up to floor {CurrentFloor}");
+        //Console.WriteLine($"[ELEVATOR {Label}] moved up to floor {CurrentFloor}");
         _logger?.LogInformation("State: MOVING_UP | Floor: {Floor}", CurrentFloor);
     }
 
@@ -108,21 +108,21 @@ public class Elevator
             _currentFloor--;
         }
 
-        Console.WriteLine($"[ELEVATOR {Label}] moved down to floor {CurrentFloor}");
+        //Console.WriteLine($"[ELEVATOR {Label}] moved down to floor {CurrentFloor}");
         _logger?.LogInformation("State: MOVING_DOWN | Floor: {Floor}", CurrentFloor);
     }
 
     public async Task OpenDoor()
     {
         State = ElevatorState.DOOR_OPEN;
-        Console.WriteLine($"[ELEVATOR {Label}] Doors are OPEN at floor {CurrentFloor}");
+        //Console.WriteLine($"[ELEVATOR {Label}] Doors are OPEN at floor {CurrentFloor}");
         _logger?.LogInformation("State: DOOR_OPEN | Floor: {Floor}", CurrentFloor);
         await Task.Delay(DoorOpenMs);
     }
 
     public async Task CloseDoor()
     {
-        Console.WriteLine($"[ELEVATOR {Label}] Doors are CLOSED (IDLE) at floor {CurrentFloor}");
+        //Console.WriteLine($"[ELEVATOR {Label}] Doors are CLOSED (IDLE) at floor {CurrentFloor}");
         _logger?.LogInformation("State: IDLE | Arrived at floor {Floor}", CurrentFloor);
         State = ElevatorState.IDLE;
         await Task.CompletedTask;

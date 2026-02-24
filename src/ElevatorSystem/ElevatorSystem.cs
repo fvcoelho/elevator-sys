@@ -168,10 +168,30 @@ public class ElevatorSystem
         {
             var elevator = _elevators[i];
             // NEW: Use system-level targets instead of elevator queue
-            var targets = GetElevatorTargets(i);
-            var targetStr = targets.Any() ? $"[{string.Join(", ", targets)}]" : "[]";
+            var targets = GetElevatorTargets(i).ToList();
 
-            status.AppendLine($"Elevator {GetElevatorLabel(i)}: Floor {elevator.CurrentFloor,-2} | {elevator.State,-12} | Targets: {targetStr}");
+            string targetDisplay;
+            if (!targets.Any())
+            {
+                targetDisplay = "None";
+            }
+            else if (targets.Count == 1)
+            {
+                var target = targets[0];
+                var direction = target > elevator.CurrentFloor ? "↑" : target < elevator.CurrentFloor ? "↓" : "•";
+                var distance = Math.Abs(target - elevator.CurrentFloor);
+                targetDisplay = $"{target}{direction} ({distance} floors away)";
+            }
+            else
+            {
+                var nextTarget = targets[0];
+                var direction = nextTarget > elevator.CurrentFloor ? "↑" : nextTarget < elevator.CurrentFloor ? "↓" : "•";
+                var distance = Math.Abs(nextTarget - elevator.CurrentFloor);
+                var queuedTargets = string.Join(", ", targets.Skip(1));
+                targetDisplay = $"Next: {nextTarget}{direction} ({distance}) → Queue: [{queuedTargets}]";
+            }
+
+            status.AppendLine($"Elevator {GetElevatorLabel(i)}: Floor {elevator.CurrentFloor,-2} | {elevator.State,-12} | {targetDisplay}");
         }
 
         status.AppendLine();
@@ -278,6 +298,8 @@ public class ElevatorSystem
             _elevatorTargets[elevatorIndex].Enqueue(request.DestinationFloor);
         }
 
+        GetSystemStatus(); // Update status display
+        
         Console.WriteLine($"[DISPATCH] {request} → Elevator {GetElevatorLabel(elevatorIndex)} (at floor {elevator.CurrentFloor}, {elevator.State})");
     }
 

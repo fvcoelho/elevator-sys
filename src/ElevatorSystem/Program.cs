@@ -127,9 +127,7 @@ var fileMonitorTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine($"=== ELEVATOR SYSTEM ({ELEVATOR_COUNT} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
-Console.WriteLine("Press [R] to REQUEST a ride");
-Console.WriteLine("Press [S] to view STATUS");
-Console.WriteLine("Press [Q] to QUIT");
+Console.WriteLine("Press [R] to REQUEST a ride | Press [S] to view STATUS | Press [Q] to QUIT");
 Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
 Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}\n");
 
