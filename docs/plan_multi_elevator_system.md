@@ -76,7 +76,7 @@ public string GetSystemStatus()
 // Internal Logic
 private int? FindBestElevator(Request)       // Returns elevator index or null
 private int CalculateDistance(Elevator, int floor)  // |currentFloor - floor|
-private void AssignRequestToElevator(int index, Request)
+private void AssignRequest(int index, Request)
 private async Task ProcessElevatorAsync(int index, CancellationToken)
 ```
 
@@ -88,7 +88,7 @@ Each ride request specifies **pickup floor** and **destination floor**:
 
 **Assignment Process:**
 ```csharp
-AssignRequestToElevator(elevator, request):
+AssignRequest(elevator, request):
   1. Add request.PickupFloor to elevator's queue    // Elevator goes here first
   2. Add request.DestinationFloor to elevator's queue // Then goes here
 
@@ -345,7 +345,7 @@ private async Task WaitForSystemIdle(ElevatorSystem system,
 - Verify correct selection
 - Run tests: Should see 10-15 new passing tests
 
-**Step 3.3: Implement AssignRequestToElevator**
+**Step 3.3: Implement AssignRequest**
 - Add request.PickupFloor to elevator queue (passenger pickup)
 - Add request.DestinationFloor to elevator queue (passenger dropoff)
 - Both floors added sequentially (FIFO order preserved)
@@ -358,7 +358,7 @@ private async Task WaitForSystemIdle(ElevatorSystem system,
 - Main dispatcher loop
 - Request dequeuing
 - Call FindBestElevator
-- Call AssignRequestToElevator
+- Call AssignRequest
 - CancellationToken handling
 
 **Step 4.2: Implement ProcessElevatorAsync**

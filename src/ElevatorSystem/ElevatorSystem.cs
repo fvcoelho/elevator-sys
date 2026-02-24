@@ -239,7 +239,7 @@ public class ElevatorSystem
         return ((char)('A' + index)).ToString();
     }
 
-    public void AssignRequestToElevator(int elevatorIndex, Request request)
+    public void AssignRequest(int elevatorIndex, Request request)
     {
         if (elevatorIndex < 0 || elevatorIndex >= _elevators.Count)
         {
@@ -299,7 +299,7 @@ public class ElevatorSystem
 
                 if (bestElevatorIndex.HasValue)
                 {
-                    AssignRequestToElevator(bestElevatorIndex.Value, request);
+                    AssignRequest(bestElevatorIndex.Value, request);
                 }
                 else
                 {

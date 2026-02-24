@@ -302,14 +302,14 @@ public class ElevatorSystemTests
     }
 
     [Fact]
-    public void AssignRequestToElevator_ValidRequest_AddsPickupAndDestinationToQueue()
+    public void AssignRequest_ValidRequest_AddsPickupAndDestinationToQueue()
     {
         // Arrange
         var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20);
         var request = new Request(pickupFloor: 5, destinationFloor: 15);
 
         // Act
-        system.AssignRequestToElevator(0, request);
+        system.AssignRequest(0, request);
 
         // Assert - check system-level targets instead of elevator queue
         var targets = system.GetElevatorTargets(0).ToList();
@@ -319,20 +319,20 @@ public class ElevatorSystemTests
     }
 
     [Fact]
-    public void AssignRequestToElevator_InvalidElevatorIndex_ThrowsArgumentOutOfRangeException()
+    public void AssignRequest_InvalidElevatorIndex_ThrowsArgumentOutOfRangeException()
     {
         // Arrange
         var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20);
         var request = new Request(pickupFloor: 5, destinationFloor: 15);
 
         // Act & Assert
-        var act = () => system.AssignRequestToElevator(10, request);
+        var act = () => system.AssignRequest(10, request);
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     [Fact]
-    public void AssignRequestToElevator_MultipleRequests_AddsInOrder()
+    public void AssignRequest_MultipleRequests_AddsInOrder()
     {
         // Arrange
         var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20);
@@ -340,8 +340,8 @@ public class ElevatorSystemTests
         var request2 = new Request(pickupFloor: 8, destinationFloor: 12);
 
         // Act
-        system.AssignRequestToElevator(0, request1);
-        system.AssignRequestToElevator(0, request2);
+        system.AssignRequest(0, request1);
+        system.AssignRequest(0, request2);
 
         // Assert - check system-level targets instead of elevator queue
         var targets = system.GetElevatorTargets(0).ToList();
