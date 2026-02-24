@@ -4,10 +4,16 @@ class Program
 {
     private const int MIN_FLOOR = 1;
     private const int MAX_FLOOR = 20;
-    private const string REQUEST_FILE = "elevator_requests.txt";
+    private const string REQUESTS_DIR = "requests";
 
     static void Main(string[] args)
     {
+        // Create requests directory if it doesn't exist
+        if (!Directory.Exists(REQUESTS_DIR))
+        {
+            Directory.CreateDirectory(REQUESTS_DIR);
+        }
+
         // Handle command line arguments
         if (args.Length == 2)
         {
@@ -36,7 +42,7 @@ class Program
         Console.WriteLine("=== ELEVATOR REQUEST WRITER ===");
         Console.WriteLine();
         Console.WriteLine("Enter elevator requests to send to the system.");
-        Console.WriteLine($"Requests are written to: {Path.GetFullPath(REQUEST_FILE)}");
+        Console.WriteLine($"Requests are written to: {Path.GetFullPath(REQUESTS_DIR)}");
         Console.WriteLine();
     }
 
@@ -99,11 +105,12 @@ class Program
         }
 
         // Write to file
-        if (WriteRequest(pickup.Value, destination.Value))
+        var filename = WriteRequest(pickup.Value, destination.Value);
+        if (filename != null)
         {
             Console.WriteLine();
             Console.WriteLine($"✓ Request added: {pickup.Value} → {destination.Value}");
-            Console.WriteLine($"  Written to file: {REQUEST_FILE}");
+            Console.WriteLine($"  Created file: {filename}");
             Console.WriteLine();
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey(intercept: true);
@@ -151,26 +158,31 @@ class Program
         return floor >= MIN_FLOOR && floor <= MAX_FLOOR;
     }
 
-    static bool WriteRequest(int pickup, int destination)
+    static string? WriteRequest(int pickup, int destination)
     {
         try
         {
-            // Append request to file
-            using (var writer = new StreamWriter(REQUEST_FILE, append: true))
-            {
-                writer.WriteLine($"{pickup} {destination}");
-            }
-            return true;
+            // Generate timestamp
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
+            // Create filename
+            var filename = $"{timestamp}_from_{pickup}_to_{destination}.txt";
+            var filepath = Path.Combine(REQUESTS_DIR, filename);
+
+            // Write request to individual file
+            File.WriteAllText(filepath, $"{pickup} {destination}");
+
+            return filename;
         }
         catch (IOException ex)
         {
             Console.WriteLine($"❌ File error: {ex.Message}");
-            return false;
+            return null;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"❌ Unexpected error: {ex.Message}");
-            return false;
+            return null;
         }
     }
 }

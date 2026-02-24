@@ -6,7 +6,8 @@ const int MIN_FLOOR = 1;
 const int MAX_FLOOR = 20;            // Extended from 10 to 20
 const int DOOR_OPEN_MS = 3000;       // 3 seconds
 const int FLOOR_TRAVEL_MS = 1500;    // 1.5 seconds per floor
-const string REQUEST_FILE = "elevator_requests.txt"; // Request file path
+const string REQUESTS_DIR = "requests";   // Directory for pending requests
+const string PROCESSED_DIR = "processed"; // Directory for processed requests
 
 // Create multi-elevator system
 var system = new ElevatorSystem.ElevatorSystem(
@@ -16,20 +17,19 @@ var system = new ElevatorSystem.ElevatorSystem(
     doorOpenMs: DOOR_OPEN_MS,
     floorTravelMs: FLOOR_TRAVEL_MS);
 
-// Initialize request file if it doesn't exist
-if (!File.Exists(REQUEST_FILE))
+// Create directories if they don't exist
+if (!Directory.Exists(REQUESTS_DIR))
 {
-    File.WriteAllText(REQUEST_FILE, "# Elevator Requests (format: pickup destination)\n");
+    Directory.CreateDirectory(REQUESTS_DIR);
 }
 
-// Track processed lines to avoid reprocessing
-var processedLines = new HashSet<string>();
+if (!Directory.Exists(PROCESSED_DIR))
+{
+    Directory.CreateDirectory(PROCESSED_DIR);
+}
 
-// Track request ID to line content mapping for completion updates
-var requestIdToLineContent = new Dictionary<int, string>();
-
-// Lock for file updates
-var fileLock = new object();
+// Track processed filenames to avoid reprocessing
+var processedFiles = new HashSet<string>();
 
 // Create cancellation token source
 using var cts = new CancellationTokenSource();
@@ -54,132 +54,69 @@ var fileMonitorTask = Task.Run(async () =>
     {
         try
         {
-            if (File.Exists(REQUEST_FILE))
+            // Get all .txt files in requests directory
+            var files = Directory.GetFiles(REQUESTS_DIR, "*.txt");
+
+            foreach (var filepath in files)
             {
-                List<string> allLines;
-                lock (fileLock)
+                var filename = Path.GetFileName(filepath);
+
+                // Skip if already processed
+                if (processedFiles.Contains(filename))
+                    continue;
+
+                try
                 {
-                    allLines = File.ReadAllLines(REQUEST_FILE).ToList();
-                }
+                    // Parse filename: "20260223_214530_from_5_to_15.txt"
+                    // Pattern: {timestamp}_from_{pickup}_to_{destination}.txt
+                    var nameWithoutExt = filename.Replace(".txt", "");
+                    var parts = nameWithoutExt.Split('_');
 
-                for (int i = 0; i < allLines.Count; i++)
-                {
-                    var line = allLines[i];
-
-                    // Skip comments and empty lines
-                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#"))
-                        continue;
-
-                    // Check if already processed
-                    if (processedLines.Contains(line))
-                        continue;
-
-                    // Extract request data (without any existing status)
-                    var requestPart = line.Split('#')[0].Trim();
-                    var parts = requestPart.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-                    if (parts.Length >= 2 &&
-                        int.TryParse(parts[0], out int pickup) &&
-                        int.TryParse(parts[1], out int destination))
+                    if (parts.Length >= 6 && parts[2] == "from" && parts[4] == "to")
                     {
-                        // Check if line already has a status
-                        bool hasStatus = line.Contains("# waiting") || line.Contains("# doing") || line.Contains("# done") || line.Contains("# error");
-
-                        if (!hasStatus)
+                        if (int.TryParse(parts[3], out int pickup) &&
+                            int.TryParse(parts[5], out int destination))
                         {
-                            // Mark as waiting
-                            allLines[i] = $"{requestPart} # waiting";
-                            processedLines.Add(line);
+                            // Create request
+                            var request = new Request(pickup, destination, MIN_FLOOR, MAX_FLOOR);
+                            system.AddRequest(request);
 
-                            lock (fileLock)
-                            {
-                                File.WriteAllLines(REQUEST_FILE, allLines);
-                            }
+                            // Mark as processed
+                            processedFiles.Add(filename);
 
-                            Console.WriteLine($"[FILE] Status: waiting - {pickup} → {destination}");
-                            await Task.Delay(100); // Small delay before processing
+                            // Move file to processed/ directory
+                            var processedPath = Path.Combine(PROCESSED_DIR, filename);
+                            File.Move(filepath, processedPath);
+
+                            Console.WriteLine($"[FILE] Processed and archived: {filename} (Request #{request.RequestId})");
                         }
-                        else if (line.Contains("# waiting"))
+                        else
                         {
-                            // Process waiting request
-                            try
-                            {
-                                var request = new Request(pickup, destination, MIN_FLOOR, MAX_FLOOR);
-                                system.AddRequest(request);
-                                Console.WriteLine($"[FILE] Request added to system: {pickup} → {destination}");
-
-                                // Track this request ID for completion updates
-                                requestIdToLineContent[request.RequestId] = requestPart;
-
-                                // Mark as doing (being processed)
-                                allLines[i] = $"{requestPart} # doing";
-                                processedLines.Add(line);
-
-                                lock (fileLock)
-                                {
-                                    File.WriteAllLines(REQUEST_FILE, allLines);
-                                }
-
-                                Console.WriteLine($"[FILE] Status: doing - {pickup} → {destination} (Request #{request.RequestId})");
-                            }
-                            catch (ArgumentException ex)
-                            {
-                                Console.WriteLine($"[FILE] Invalid request: {line} - {ex.Message}");
-
-                                // Mark as error
-                                allLines[i] = $"{requestPart} # error: {ex.Message}";
-                                processedLines.Add(line);
-
-                                lock (fileLock)
-                                {
-                                    File.WriteAllLines(REQUEST_FILE, allLines);
-                                }
-                            }
+                            Console.WriteLine($"[FILE] Invalid floor numbers in filename: {filename}");
+                            processedFiles.Add(filename); // Skip this file in future iterations
                         }
                     }
-                }
-
-                // Check for completed requests and update file
-                var completedIds = system.GetCompletedRequestIds();
-                if (completedIds.Any())
-                {
-                    foreach (var completedId in completedIds)
+                    else
                     {
-                        if (requestIdToLineContent.TryGetValue(completedId, out var lineContent))
-                        {
-                            // Find and update the line in the file
-                            lock (fileLock)
-                            {
-                                var currentLines = File.ReadAllLines(REQUEST_FILE).ToList();
-                                for (int i = 0; i < currentLines.Count; i++)
-                                {
-                                    if (currentLines[i].StartsWith(lineContent) && currentLines[i].Contains("# doing"))
-                                    {
-                                        currentLines[i] = $"{lineContent} # done";
-                                        File.WriteAllLines(REQUEST_FILE, currentLines);
-                                        Console.WriteLine($"[FILE] Status: done - {lineContent} (Request #{completedId})");
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // Remove from tracking
-                            requestIdToLineContent.Remove(completedId);
-                        }
+                        Console.WriteLine($"[FILE] Invalid filename format: {filename}");
+                        processedFiles.Add(filename); // Skip this file in future iterations
                     }
-
-                    // Clear completed requests from system
-                    system.ClearCompletedRequestIds();
+                }
+                catch (ArgumentException ex)
+                {
+                    Console.WriteLine($"[FILE] Invalid request in {filename}: {ex.Message}");
+                    processedFiles.Add(filename); // Skip this file in future iterations
+                }
+                catch (IOException ex)
+                {
+                    // File might be locked, retry next iteration
+                    Console.WriteLine($"[FILE] Could not access {filename}: {ex.Message}");
                 }
             }
         }
-        catch (IOException)
-        {
-            // File is being written to, skip this iteration
-        }
         catch (Exception ex)
         {
-            Console.WriteLine($"[FILE] Error reading file: {ex.Message}");
+            Console.WriteLine($"[FILE] Error monitoring directory: {ex.Message}");
         }
 
         await Task.Delay(500, cts.Token); // Check every 500ms
@@ -191,7 +128,8 @@ Console.WriteLine($"=== ELEVATOR SYSTEM ({ELEVATOR_COUNT} elevators, floors {MIN
 Console.WriteLine("Press [R] to REQUEST a ride");
 Console.WriteLine("Press [S] to view STATUS");
 Console.WriteLine("Press [Q] to QUIT");
-Console.WriteLine($"\nMonitoring file: {Path.GetFullPath(REQUEST_FILE)}\n");
+Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
+Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}\n");
 
 // Display initial status
 Console.WriteLine(system.GetSystemStatus());
