@@ -208,9 +208,9 @@ public class ElevatorSystemTests
         status.Should().Contain("ELEVATOR SYSTEM");
         status.Should().Contain("3 elevators");
         status.Should().Contain("floors 1-20");
-        status.Should().Contain("Elevator A:");
-        status.Should().Contain("Elevator B:");
-        status.Should().Contain("Elevator C:");
+        status.Should().Contain("Elevator A [Local]:");
+        status.Should().Contain("Elevator B [Local]:");
+        status.Should().Contain("Elevator C [Local]:");
         status.Should().Contain("Pending Requests: 0");
     }
 
@@ -391,7 +391,7 @@ public class ElevatorSystemTests
     public async Task Integration_SingleRequest_CompletesSuccessfully()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10, doorTransitionMs: 10);
         var request = new Request(pickupFloor: 5, destinationFloor: 15);
 
         // Act - Start system and add request
@@ -416,7 +416,7 @@ public class ElevatorSystemTests
     public async Task Integration_MultipleRequests_AllProcessed()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 5, floorTravelMs: 5);
+        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 5, floorTravelMs: 5, doorTransitionMs: 5);
         var requests = new[]
         {
             new Request(pickupFloor: 3, destinationFloor: 10),
@@ -450,7 +450,7 @@ public class ElevatorSystemTests
     public async Task Integration_ConcurrentRequests_AllProcessedCorrectly()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 5, floorTravelMs: 5);
+        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 5, floorTravelMs: 5, doorTransitionMs: 5);
         const int requestCount = 20;
 
         // Act
@@ -489,7 +489,7 @@ public class ElevatorSystemTests
     public async Task Integration_DownwardRide_CompletesCorrectly()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10, doorTransitionMs: 10);
         var request = new Request(pickupFloor: 15, destinationFloor: 5);
 
         // Act
@@ -514,7 +514,7 @@ public class ElevatorSystemTests
     public async Task Integration_RequestFromCurrentFloor_HandledCorrectly()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10, doorTransitionMs: 10);
         // Elevator 1 starts at floor 10
         var request = new Request(pickupFloor: 10, destinationFloor: 15);
 
@@ -539,7 +539,7 @@ public class ElevatorSystemTests
     public async Task Integration_SystemStatus_AccurateDuringOperation()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10, doorTransitionMs: 10);
         var request = new Request(pickupFloor: 5, destinationFloor: 15);
 
         // Act
@@ -575,7 +575,7 @@ public class ElevatorSystemTests
     public async Task ProcessRequestsAsync_HighPriorityFirst_ProcessedBeforeNormalPriority()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 1, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var system = new ElevatorSystem(elevatorCount: 1, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10, doorTransitionMs: 10);
         var cts = new CancellationTokenSource();
 
         // Add normal priority first, high priority second
@@ -588,7 +588,7 @@ public class ElevatorSystemTests
 
         // Act
         var systemTask = system.ProcessRequestsAsync(cts.Token);
-        await Task.Delay(300); // Let dispatcher process
+        await Task.Delay(500); // Let dispatcher process (increased for door transitions)
         cts.Cancel();
         try { await systemTask; } catch (OperationCanceledException) { }
 
@@ -601,7 +601,7 @@ public class ElevatorSystemTests
     public async Task FindBestElevator_HighPriority_SelectsClosestElevator()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10, doorTransitionMs: 10);
 
         // Setup: 3 elevators at floors 1, 10, 20 (initial distribution)
         // High priority request at floor 9 should go to elevator at floor 10 (closest)
@@ -621,7 +621,7 @@ public class ElevatorSystemTests
     public async Task ProcessRequestsAsync_MixedPriorities_ProcessedInPriorityOrder()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 2, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var system = new ElevatorSystem(elevatorCount: 2, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10, doorTransitionMs: 10);
         var cts = new CancellationTokenSource();
 
         // Add requests in mixed order
@@ -673,7 +673,7 @@ public class ElevatorSystemTests
     public async Task ProcessRequestsAsync_SamePriority_ProcessedByTimestamp()
     {
         // Arrange
-        var system = new ElevatorSystem(elevatorCount: 1, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var system = new ElevatorSystem(elevatorCount: 1, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10, doorTransitionMs: 10);
         var cts = new CancellationTokenSource();
 
         // Add multiple requests with same priority

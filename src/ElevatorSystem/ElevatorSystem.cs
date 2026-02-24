@@ -15,6 +15,9 @@ internal class RequestProgress
     public bool DestinationReached { get; set; }
     public bool IsComplete => PickupReached && DestinationReached;
     public Queue<int> PendingFloors { get; set; } = new();  // NEW: Track pending floors for this request
+    public long RequestTimestamp { get; set; }
+    public long? PickupTimestamp { get; set; }
+    public long? DestinationTimestamp { get; set; }
 }
 
 public class ElevatorSystem
@@ -39,15 +42,33 @@ public class ElevatorSystem
     private readonly Dictionary<int, StreamWriter> _elevatorLogs = new();
     private readonly object _logLock = new();
 
+    // Floor access control
+    private readonly Dictionary<int, FloorRestriction> _floorRestrictions = new();
+
+    // Performance tracking
+    private readonly PerformanceTracker _performanceTracker = new();
+
     public int ElevatorCount => _elevators.Count;
     public int PendingRequestCount => _requests.Count;
+    public DispatchAlgorithm Algorithm { get; set; } = DispatchAlgorithm.Simple;
 
-    public ElevatorSystem(int elevatorCount, int minFloor, int maxFloor, int doorOpenMs = 3000, int floorTravelMs = 1500)
+    public ElevatorSystem(int elevatorCount, int minFloor, int maxFloor, int doorOpenMs = 3000, int floorTravelMs = 1500, int doorTransitionMs = 1000)
+        : this(minFloor, maxFloor, doorOpenMs, floorTravelMs, doorTransitionMs, CreateDefaultElevatorConfigs(elevatorCount, minFloor, maxFloor))
     {
-        if (elevatorCount < 1 || elevatorCount > 5)
+    }
+
+    public ElevatorSystem(
+        int minFloor,
+        int maxFloor,
+        int doorOpenMs,
+        int floorTravelMs,
+        int doorTransitionMs,
+        ElevatorConfig[] elevatorConfigs)
+    {
+        if (elevatorConfigs == null || elevatorConfigs.Length < 1 || elevatorConfigs.Length > 5)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(elevatorCount),
+                nameof(elevatorConfigs),
                 "Elevator count must be between 1 and 5");
         }
 
@@ -58,7 +79,7 @@ public class ElevatorSystem
 
         _minFloor = minFloor;
         _maxFloor = maxFloor;
-        _elevators = new List<Elevator>(elevatorCount);
+        _elevators = new List<Elevator>(elevatorConfigs.Length);
 
         // Create logs directory if it doesn't exist
         if (!Directory.Exists(_logsDirectory))
@@ -66,12 +87,11 @@ public class ElevatorSystem
             Directory.CreateDirectory(_logsDirectory);
         }
 
-        // Initialize elevators at evenly distributed floors for better coverage
-        var initialFloors = CalculateInitialFloors(elevatorCount, minFloor, maxFloor);
-
-        for (int i = 0; i < elevatorCount; i++)
+        // Create elevators from configs
+        for (int i = 0; i < elevatorConfigs.Length; i++)
         {
-            var elevatorLabel = GetElevatorLabel(i);
+            var config = elevatorConfigs[i];
+            var elevatorLabel = string.IsNullOrEmpty(config.Label) ? GetElevatorLabel(i) : config.Label;
 
             // Initialize log file for this elevator
             var logFileName = $"elevator_{elevatorLabel}.log";
@@ -85,17 +105,44 @@ public class ElevatorSystem
             var elevator = new Elevator(
                 minFloor: minFloor,
                 maxFloor: maxFloor,
-                initialFloor: initialFloors[i],
+                initialFloor: config.InitialFloor,
                 doorOpenMs: doorOpenMs,
                 floorTravelMs: floorTravelMs,
                 label: elevatorLabel,
-                logger: elevatorLogger);
+                logger: elevatorLogger,
+                doorTransitionMs: doorTransitionMs,
+                type: config.Type,
+                servedFloors: config.ServedFloors,
+                capacity: config.Capacity);
 
             _elevators.Add(elevator);
 
-            // NEW: Initialize target queue for this elevator
+            // Initialize target queue for this elevator
             _elevatorTargets[i] = new Queue<int>();
+
+            // Initialize performance tracking for this elevator
+            _performanceTracker.InitializeElevator(elevatorLabel);
         }
+    }
+
+    private static ElevatorConfig[] CreateDefaultElevatorConfigs(int elevatorCount, int minFloor, int maxFloor)
+    {
+        var initialFloors = CalculateInitialFloors(elevatorCount, minFloor, maxFloor);
+        var configs = new ElevatorConfig[elevatorCount];
+
+        for (int i = 0; i < elevatorCount; i++)
+        {
+            configs[i] = new ElevatorConfig
+            {
+                Label = GetElevatorLabel(i),
+                InitialFloor = initialFloors[i],
+                Type = ElevatorType.Local,
+                ServedFloors = null, // All floors
+                Capacity = 10
+            };
+        }
+
+        return configs;
     }
 
     private static int[] CalculateInitialFloors(int elevatorCount, int minFloor, int maxFloor)
@@ -135,6 +182,131 @@ public class ElevatorSystem
         return floors;
     }
 
+    /// <summary>
+    /// Create a configuration with 1 Express elevator and 2 Local elevators
+    /// Express serves floors 1 and 15-20, Local serve all floors
+    /// </summary>
+    public static ElevatorConfig[] CreateExpressLocalMix(int minFloor, int maxFloor)
+    {
+        return new[]
+        {
+            new ElevatorConfig
+            {
+                Label = "A",
+                InitialFloor = minFloor,
+                Type = ElevatorType.Express,
+                ServedFloors = new HashSet<int> { minFloor }.Union(Enumerable.Range(15, maxFloor - 15 + 1)).ToHashSet(),
+                Capacity = 12
+            },
+            new ElevatorConfig
+            {
+                Label = "B",
+                InitialFloor = minFloor + (maxFloor - minFloor) / 3,
+                Type = ElevatorType.Local,
+                ServedFloors = null, // All floors
+                Capacity = 10
+            },
+            new ElevatorConfig
+            {
+                Label = "C",
+                InitialFloor = minFloor + 2 * (maxFloor - minFloor) / 3,
+                Type = ElevatorType.Local,
+                ServedFloors = null, // All floors
+                Capacity = 10
+            }
+        };
+    }
+
+    /// <summary>
+    /// Create a configuration with 1 Freight and 2 Local elevators
+    /// Freight has higher capacity and serves all floors
+    /// </summary>
+    public static ElevatorConfig[] CreateFreightLocalMix(int minFloor, int maxFloor)
+    {
+        return new[]
+        {
+            new ElevatorConfig
+            {
+                Label = "F1",
+                InitialFloor = minFloor,
+                Type = ElevatorType.Freight,
+                ServedFloors = null, // All floors
+                Capacity = 20 // Higher capacity
+            },
+            new ElevatorConfig
+            {
+                Label = "L1",
+                InitialFloor = minFloor + (maxFloor - minFloor) / 2,
+                Type = ElevatorType.Local,
+                ServedFloors = null,
+                Capacity = 10
+            },
+            new ElevatorConfig
+            {
+                Label = "L2",
+                InitialFloor = maxFloor,
+                Type = ElevatorType.Local,
+                ServedFloors = null,
+                Capacity = 10
+            }
+        };
+    }
+
+    /// <summary>
+    /// Set access restriction for a specific floor
+    /// </summary>
+    public void SetFloorRestriction(int floor, FloorRestriction restriction)
+    {
+        if (floor < _minFloor || floor > _maxFloor)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(floor),
+                $"Floor must be between {_minFloor} and {_maxFloor}");
+        }
+
+        _floorRestrictions[floor] = restriction;
+    }
+
+    /// <summary>
+    /// Check if a request has access to a specific floor
+    /// </summary>
+    public bool CanAccessFloor(Request request, int floor)
+    {
+        // Check if there's a restriction for this floor
+        if (!_floorRestrictions.TryGetValue(floor, out var restriction))
+        {
+            // No restriction - check access level's allowed floors
+            if (request.AccessLevel.AllowedFloors != null &&
+                !request.AccessLevel.AllowedFloors.Contains(floor))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // Floor has restrictions - check VIP requirement
+        if (restriction.RequiresVIP && !request.AccessLevel.IsVIP)
+        {
+            return false;
+        }
+
+        // Check specific access level restrictions
+        if (restriction.AllowedAccessLevels.Any() &&
+            !restriction.AllowedAccessLevels.Contains(request.AccessLevel.Name))
+        {
+            return false;
+        }
+
+        // Check access level's allowed floors
+        if (request.AccessLevel.AllowedFloors != null &&
+            !request.AccessLevel.AllowedFloors.Contains(floor))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     public void AddRequest(Request request)
     {
         if (request == null)
@@ -155,7 +327,21 @@ public class ElevatorSystem
                 $"Destination floor {request.DestinationFloor} is outside valid range ({_minFloor}-{_maxFloor})");
         }
 
+        // Validate floor access permissions
+        if (!CanAccessFloor(request, request.PickupFloor))
+        {
+            throw new UnauthorizedAccessException(
+                $"Access denied to pickup floor {request.PickupFloor} for access level '{request.AccessLevel.Name}'");
+        }
+
+        if (!CanAccessFloor(request, request.DestinationFloor))
+        {
+            throw new UnauthorizedAccessException(
+                $"Access denied to destination floor {request.DestinationFloor} for access level '{request.AccessLevel.Name}'");
+        }
+
         _requests.Enqueue(request);
+        _performanceTracker.RecordRequest(request);
         Console.WriteLine($"[SYSTEM] {request} added to queue");
     }
 
@@ -192,7 +378,7 @@ public class ElevatorSystem
                 targetDisplay = $"Next: {nextTarget}{direction} ({distance}) → Queue: [{queuedTargets}]";
             }
 
-            status.AppendLine($"Elevator {GetElevatorLabel(i)}: Floor {elevator.CurrentFloor,-2} | {elevator.State,-12} | {targetDisplay}");
+            status.AppendLine($"Elevator {GetElevatorLabel(i)} [{elevator.Type}]: Floor {elevator.CurrentFloor,-2} | {elevator.State,-12} | {targetDisplay}");
         }
 
         status.AppendLine();
@@ -217,6 +403,14 @@ public class ElevatorSystem
         return status.ToString();
     }
 
+    /// <summary>
+    /// Get current performance metrics
+    /// </summary>
+    public PerformanceMetrics GetPerformanceMetrics()
+    {
+        return _performanceTracker.GetMetrics();
+    }
+
     public Elevator GetElevator(int index)
     {
         if (index < 0 || index >= _elevators.Count)
@@ -229,6 +423,17 @@ public class ElevatorSystem
 
     public int? FindBestElevator(Request request)
     {
+        return Algorithm switch
+        {
+            DispatchAlgorithm.Simple => FindBestElevatorSimple(request),
+            DispatchAlgorithm.SCAN => FindBestElevatorScan(request),
+            DispatchAlgorithm.LOOK => FindBestElevatorLook(request),
+            _ => FindBestElevatorSimple(request)
+        };
+    }
+
+    private int? FindBestElevatorSimple(Request request)
+    {
         lock (_dispatchLock)
         {
             // Separate elevators into idle and busy groups
@@ -238,6 +443,16 @@ public class ElevatorSystem
             for (int i = 0; i < _elevators.Count; i++)
             {
                 var elevator = _elevators[i];
+
+                // Skip elevators in maintenance
+                if (elevator.InMaintenance)
+                    continue;
+
+                // Skip elevators that can't serve pickup or destination floor
+                if (!elevator.CanServeFloor(request.PickupFloor) ||
+                    !elevator.CanServeFloor(request.DestinationFloor))
+                    continue;
+
                 var distance = CalculateDistance(elevator.CurrentFloor, request.PickupFloor);
 
                 if (elevator.State == ElevatorState.IDLE)
@@ -288,6 +503,128 @@ public class ElevatorSystem
         return Math.Abs(currentFloor - targetFloor);
     }
 
+    private int? FindBestElevatorScan(Request request)
+    {
+        lock (_dispatchLock)
+        {
+            var scores = new List<(int index, double score)>();
+
+            for (int i = 0; i < _elevators.Count; i++)
+            {
+                var elevator = _elevators[i];
+
+                // Skip elevators in maintenance
+                if (elevator.InMaintenance)
+                    continue;
+
+                // Skip elevators that can't serve pickup or destination floor
+                if (!elevator.CanServeFloor(request.PickupFloor) ||
+                    !elevator.CanServeFloor(request.DestinationFloor))
+                    continue;
+
+                double score = 0;
+
+                // High priority: ignore direction bonuses, just pick closest
+                if (request.Priority == RequestPriority.High)
+                {
+                    score = -CalculateDistance(elevator.CurrentFloor, request.PickupFloor);
+                    scores.Add((i, score));
+                    continue;
+                }
+
+                // SCAN: Elevator moving in same direction and will pass by pickup floor gets big bonus
+                if (IsElevatorHeadingToward(elevator, request.PickupFloor))
+                {
+                    score += 100; // High bonus for same direction
+                }
+
+                // Distance penalty (negative score for distance)
+                score -= CalculateDistance(elevator.CurrentFloor, request.PickupFloor);
+
+                // Idle bonus
+                if (elevator.State == ElevatorState.IDLE)
+                {
+                    score += 50;
+                }
+
+                scores.Add((i, score));
+            }
+
+            if (!scores.Any())
+                return null;
+
+            // Return elevator with highest score
+            return scores.OrderByDescending(s => s.score).First().index;
+        }
+    }
+
+    private int? FindBestElevatorLook(Request request)
+    {
+        lock (_dispatchLock)
+        {
+            var scores = new List<(int index, double score)>();
+
+            for (int i = 0; i < _elevators.Count; i++)
+            {
+                var elevator = _elevators[i];
+
+                // Skip elevators in maintenance
+                if (elevator.InMaintenance)
+                    continue;
+
+                // Skip elevators that can't serve pickup or destination floor
+                if (!elevator.CanServeFloor(request.PickupFloor) ||
+                    !elevator.CanServeFloor(request.DestinationFloor))
+                    continue;
+
+                double score = 0;
+
+                // High priority: ignore direction bonuses, just pick closest
+                if (request.Priority == RequestPriority.High)
+                {
+                    score = -CalculateDistance(elevator.CurrentFloor, request.PickupFloor);
+                    scores.Add((i, score));
+                    continue;
+                }
+
+                // LOOK: Similar to SCAN but with slightly less aggressive direction preference
+                // since LOOK reverses at last request rather than building end
+                if (IsElevatorHeadingToward(elevator, request.PickupFloor))
+                {
+                    score += 75; // Moderate bonus for same direction
+                }
+
+                // Distance penalty
+                score -= CalculateDistance(elevator.CurrentFloor, request.PickupFloor);
+
+                // Idle bonus
+                if (elevator.State == ElevatorState.IDLE)
+                {
+                    score += 60; // Slightly higher idle preference than SCAN
+                }
+
+                scores.Add((i, score));
+            }
+
+            if (!scores.Any())
+                return null;
+
+            // Return elevator with highest score
+            return scores.OrderByDescending(s => s.score).First().index;
+        }
+    }
+
+    private bool IsElevatorHeadingToward(Elevator elevator, int targetFloor)
+    {
+        // Check if elevator is moving toward target floor
+        if (elevator.State == ElevatorState.MOVING_UP && targetFloor > elevator.CurrentFloor)
+            return true;
+        if (elevator.State == ElevatorState.MOVING_DOWN && targetFloor < elevator.CurrentFloor)
+            return true;
+
+        return false;
+    }
+
     private static string GetElevatorLabel(int index)
     {
         // Convert 0->A, 1->B, 2->C, 3->D, 4->E
@@ -312,7 +649,8 @@ public class ElevatorSystem
             Priority = request.Priority,
             AssignedElevatorIndex = elevatorIndex,
             PickupReached = false,
-            DestinationReached = false
+            DestinationReached = false,
+            RequestTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         // NEW: Populate pending floors for this request
@@ -364,7 +702,12 @@ public class ElevatorSystem
 
                 // Process highest priority request
                 var request = sortedRequests.First();
+
+                // Track dispatch time
+                var dispatchStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 var bestElevatorIndex = FindBestElevator(request);
+                dispatchStopwatch.Stop();
+                _performanceTracker.RecordDispatchTime(dispatchStopwatch.Elapsed);
 
                 if (bestElevatorIndex.HasValue)
                 {
@@ -395,33 +738,47 @@ public class ElevatorSystem
     private async Task ProcessElevatorAsync(int elevatorIndex, CancellationToken cancellationToken)
     {
         var elevator = _elevators[elevatorIndex];
+        var elevatorLabel = GetElevatorLabel(elevatorIndex);
 
         while (!cancellationToken.IsCancellationRequested)
         {
             // NEW: Use system-level target retrieval instead of elevator queue
             if (GetNextTargetForElevator(elevatorIndex, out int targetFloor))
             {
+                var startFloor = elevator.CurrentFloor;
+
                 // Move to target floor
                 while (elevator.CurrentFloor != targetFloor && !cancellationToken.IsCancellationRequested)
                 {
                     if (elevator.CurrentFloor < targetFloor)
                     {
+                        var moveStart = System.Diagnostics.Stopwatch.StartNew();
                         await elevator.MoveUp();
+                        moveStart.Stop();
+                        _performanceTracker.RecordElevatorMovement(elevatorLabel, 1, moveStart.Elapsed);
                     }
                     else if (elevator.CurrentFloor > targetFloor)
                     {
+                        var moveStart = System.Diagnostics.Stopwatch.StartNew();
                         await elevator.MoveDown();
+                        moveStart.Stop();
+                        _performanceTracker.RecordElevatorMovement(elevatorLabel, 1, moveStart.Elapsed);
                     }
                 }
 
                 // Open and close doors at target floor
                 if (!cancellationToken.IsCancellationRequested)
                 {
+                    var doorStart = System.Diagnostics.Stopwatch.StartNew();
                     await elevator.OpenDoor();
-
                     await elevator.CloseDoor();
+                    doorStart.Stop();
+                    _performanceTracker.RecordElevatorDoorTime(elevatorLabel, doorStart.Elapsed);
 
-                    Console.WriteLine($"[ELEVATOR {GetElevatorLabel(elevatorIndex)}] Arrived at floor {targetFloor}");
+                    Console.WriteLine($"[ELEVATOR {elevatorLabel}] Arrived at floor {targetFloor}");
+
+                    // Track trip completion
+                    _performanceTracker.RecordCompletedTrip(elevatorLabel);
 
                     // Check if this floor completes any requests
                     CheckRequestCompletion(elevatorIndex, targetFloor);
@@ -429,8 +786,11 @@ public class ElevatorSystem
             }
             else
             {
-                // No targets, wait a bit
+                // No targets, track idle time
+                var idleStart = System.Diagnostics.Stopwatch.StartNew();
                 await Task.Delay(100, cancellationToken);
+                idleStart.Stop();
+                _performanceTracker.RecordElevatorIdleTime(elevatorLabel, idleStart.Elapsed);
             }
         }
     }
@@ -450,6 +810,7 @@ public class ElevatorSystem
             if (reachedFloor == progress.PickupFloor && !progress.PickupReached)
             {
                 progress.PickupReached = true;
+                progress.PickupTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: Pickup complete at floor {reachedFloor}");
             }
 
@@ -457,6 +818,7 @@ public class ElevatorSystem
             if (reachedFloor == progress.DestinationFloor && !progress.DestinationReached)
             {
                 progress.DestinationReached = true;
+                progress.DestinationTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: Destination complete at floor {reachedFloor}");
             }
 
@@ -466,6 +828,14 @@ public class ElevatorSystem
                 _completedRequestIds.Add(progress.RequestId);
                 _activeRequests.TryRemove(progress.RequestId, out _);
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: FULLY COMPLETE");
+
+                // Track performance metrics
+                if (progress.PickupTimestamp.HasValue && progress.DestinationTimestamp.HasValue)
+                {
+                    var waitTime = TimeSpan.FromMilliseconds(progress.PickupTimestamp.Value - progress.RequestTimestamp);
+                    var rideTime = TimeSpan.FromMilliseconds(progress.DestinationTimestamp.Value - progress.PickupTimestamp.Value);
+                    _performanceTracker.RecordCompletedRequest(waitTime, rideTime);
+                }
             }
         }
     }

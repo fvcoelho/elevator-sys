@@ -105,7 +105,7 @@ var fileMonitorTask = Task.Run(async () =>
                     if (validFormat)
                     {
                         // Create request
-                        var request = new Request(pickup, destination, priority, MIN_FLOOR, MAX_FLOOR);
+                        var request = new Request(pickup, destination, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR);
                         system.AddRequest(request);
 
                         // Mark as processed
@@ -146,7 +146,7 @@ var fileMonitorTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine($"=== ELEVATOR SYSTEM ({ELEVATOR_COUNT} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
-Console.WriteLine("Press [R] to REQUEST a ride | Press [S] to view STATUS | Press [Q] to QUIT");
+Console.WriteLine("Press [R] to REQUEST a ride | Press [S] to view STATUS | Press [A] to view ANALYTICS | Press [Q] to QUIT");
 Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
 Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}\n");
 
@@ -195,7 +195,7 @@ while (true)
             // Create and add request
             try
             {
-                var request = new Request(pickupFloor, destinationFloor, priority, MIN_FLOOR, MAX_FLOOR);
+                var request = new Request(pickupFloor, destinationFloor, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR);
                 system.AddRequest(request);
                 Console.WriteLine();
             }
@@ -203,12 +203,22 @@ while (true)
             {
                 Console.WriteLine($"Error: {ex.Message}\n");
             }
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"Access Denied: {ex.Message}\n");
+            }
             break;
 
         case 'S':
             // Display status
             Console.WriteLine();
             Console.WriteLine(system.GetSystemStatus());
+            break;
+
+        case 'A':
+            // Display analytics
+            Console.WriteLine();
+            DisplayAnalytics(system);
             break;
 
         case 'Q':
@@ -227,10 +237,80 @@ while (true)
             return;
 
         default:
-            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [Q] Quit\n");
+            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [Q] Quit\n");
             break;
     }
 
     // Small delay to allow status updates to be visible
     await Task.Delay(100);
+}
+
+static void DisplayAnalytics(ElevatorSystem.ElevatorSystem system)
+{
+    var metrics = system.GetPerformanceMetrics();
+
+    Console.WriteLine("=== SYSTEM ANALYTICS ===\n");
+
+    // Request statistics
+    Console.WriteLine($"Total Requests: {metrics.TotalRequests}");
+    Console.WriteLine($"Completed: {metrics.CompletedRequests}");
+    Console.WriteLine($"In Progress: {metrics.TotalRequests - metrics.CompletedRequests}");
+    Console.WriteLine($"Peak Concurrent: {metrics.PeakConcurrentRequests}");
+    Console.WriteLine();
+
+    // Timing statistics
+    if (metrics.CompletedRequests > 0)
+    {
+        Console.WriteLine($"Average Wait Time: {metrics.AverageWaitTime.TotalSeconds:F1}s");
+        Console.WriteLine($"Average Ride Time: {metrics.AverageRideTime.TotalSeconds:F1}s");
+    }
+    if (metrics.TotalRequests > 0)
+    {
+        Console.WriteLine($"Average Dispatch: {metrics.AverageDispatchTime.TotalMilliseconds:F2}ms");
+    }
+    Console.WriteLine();
+
+    // Elevator performance
+    if (metrics.ElevatorStats.Any())
+    {
+        Console.WriteLine("Elevator Performance:");
+        foreach (var kvp in metrics.ElevatorStats.OrderBy(k => k.Key))
+        {
+            var elev = kvp.Value;
+            Console.WriteLine($"  {kvp.Key}: {elev.TripsCompleted} trips | {elev.Utilization:F1}% util | {elev.FloorsTraversed} floors");
+        }
+        Console.WriteLine();
+        Console.WriteLine($"System Utilization: {metrics.SystemUtilization:F1}%");
+        Console.WriteLine();
+    }
+
+    // Priority breakdown
+    if (metrics.RequestsByPriority.Any())
+    {
+        Console.WriteLine("Requests by Priority:");
+        foreach (var kvp in metrics.RequestsByPriority.OrderByDescending(k => k.Key))
+        {
+            Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
+        }
+        Console.WriteLine();
+    }
+
+    // VIP statistics
+    if (metrics.VIPRequests > 0 || metrics.StandardRequests > 0)
+    {
+        Console.WriteLine($"VIP Requests: {metrics.VIPRequests}");
+        Console.WriteLine($"Standard Requests: {metrics.StandardRequests}");
+        Console.WriteLine();
+    }
+
+    // Floor heatmap (top 5)
+    if (metrics.FloorHeatmap.Any())
+    {
+        Console.WriteLine("Top Floor Usage:");
+        foreach (var kvp in metrics.FloorHeatmap.OrderByDescending(k => k.Value).Take(5))
+        {
+            Console.WriteLine($"  Floor {kvp.Key}: {kvp.Value} requests");
+        }
+        Console.WriteLine();
+    }
 }

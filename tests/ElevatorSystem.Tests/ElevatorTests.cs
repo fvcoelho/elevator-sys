@@ -87,12 +87,10 @@ public class ElevatorTests
         var elevator = CreateTestElevator();
 
         // Act
-        var doorTask = elevator.OpenDoor();
+        await elevator.OpenDoor();
 
-        // Assert - State should be DOOR_OPEN immediately
+        // Assert - State should be DOOR_OPEN after transition completes
         elevator.State.Should().Be(ElevatorState.DOOR_OPEN);
-
-        await doorTask;
     }
 
     [Fact]

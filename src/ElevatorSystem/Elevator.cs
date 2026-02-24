@@ -8,12 +8,23 @@ public class Elevator
     private int _currentFloor;
     private ElevatorState _state;
     private readonly ILogger? _logger;
+    private bool _inMaintenance;
+    private readonly object _maintenanceLock = new();
 
     public int MinFloor { get; }
     public int MaxFloor { get; }
     public int DoorOpenMs { get; }
     public int FloorTravelMs { get; }
+    public int DoorTransitionMs { get; }
     public string Label { get; }
+    public ElevatorType Type { get; }
+    public HashSet<int> ServedFloors { get; }
+    public int Capacity { get; }
+
+    public bool InMaintenance
+    {
+        get { lock (_maintenanceLock) { return _inMaintenance; } }
+    }
 
     public int CurrentFloor
     {
@@ -51,7 +62,18 @@ public class Elevator
         }
     }
 
-    public Elevator(int minFloor, int maxFloor, int initialFloor, int doorOpenMs, int floorTravelMs, string label = "", ILogger? logger = null)
+    public Elevator(
+        int minFloor,
+        int maxFloor,
+        int initialFloor,
+        int doorOpenMs,
+        int floorTravelMs,
+        string label = "",
+        ILogger? logger = null,
+        int doorTransitionMs = 1000,
+        ElevatorType type = ElevatorType.Local,
+        HashSet<int>? servedFloors = null,
+        int capacity = 10)
     {
         if (initialFloor < minFloor || initialFloor > maxFloor)
         {
@@ -62,10 +84,22 @@ public class Elevator
         MaxFloor = maxFloor;
         DoorOpenMs = doorOpenMs;
         FloorTravelMs = floorTravelMs;
+        DoorTransitionMs = doorTransitionMs;
         Label = label;
+        Type = type;
+        ServedFloors = servedFloors ?? Enumerable.Range(minFloor, maxFloor - minFloor + 1).ToHashSet();
+        Capacity = capacity;
         _logger = logger;
         _currentFloor = initialFloor;
         _state = ElevatorState.IDLE;
+    }
+
+    /// <summary>
+    /// Check if this elevator can serve the specified floor
+    /// </summary>
+    public bool CanServeFloor(int floor)
+    {
+        return ServedFloors.Contains(floor);
     }
 
     public async Task MoveUp()
@@ -114,17 +148,43 @@ public class Elevator
 
     public async Task OpenDoor()
     {
+        State = ElevatorState.DOOR_OPENING;
+        _logger?.LogInformation("State: DOOR_OPENING | Floor: {Floor}", CurrentFloor);
+        await Task.Delay(DoorTransitionMs);
+
         State = ElevatorState.DOOR_OPEN;
-        //Console.WriteLine($"[ELEVATOR {Label}] Doors are OPEN at floor {CurrentFloor}");
         _logger?.LogInformation("State: DOOR_OPEN | Floor: {Floor}", CurrentFloor);
         await Task.Delay(DoorOpenMs);
     }
 
     public async Task CloseDoor()
     {
-        //Console.WriteLine($"[ELEVATOR {Label}] Doors are CLOSED (IDLE) at floor {CurrentFloor}");
-        _logger?.LogInformation("State: IDLE | Arrived at floor {Floor}", CurrentFloor);
+        State = ElevatorState.DOOR_CLOSING;
+        _logger?.LogInformation("State: DOOR_CLOSING | Floor: {Floor}", CurrentFloor);
+        await Task.Delay(DoorTransitionMs);
+
         State = ElevatorState.IDLE;
+        _logger?.LogInformation("State: IDLE | Arrived at floor {Floor}", CurrentFloor);
         await Task.CompletedTask;
+    }
+
+    public void EnterMaintenance()
+    {
+        lock (_maintenanceLock)
+        {
+            _inMaintenance = true;
+            State = ElevatorState.MAINTENANCE;
+            _logger?.LogWarning("Elevator {Label} entering MAINTENANCE mode", Label);
+        }
+    }
+
+    public void ExitMaintenance()
+    {
+        lock (_maintenanceLock)
+        {
+            _inMaintenance = false;
+            State = ElevatorState.IDLE;
+            _logger?.LogInformation("Elevator {Label} exiting MAINTENANCE mode", Label);
+        }
     }
 }

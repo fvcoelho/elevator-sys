@@ -10,8 +10,15 @@ public class Request
     public Direction Direction { get; }
     public RequestPriority Priority { get; }
     public long Timestamp { get; }
+    public AccessLevel AccessLevel { get; }
 
-    public Request(int pickupFloor, int destinationFloor, RequestPriority priority = RequestPriority.Normal, int minFloor = 1, int maxFloor = 20)
+    public Request(
+        int pickupFloor,
+        int destinationFloor,
+        RequestPriority priority = RequestPriority.Normal,
+        AccessLevel? accessLevel = null,
+        int minFloor = 1,
+        int maxFloor = 20)
     {
         // Validate pickup floor
         if (pickupFloor < minFloor || pickupFloor > maxFloor)
@@ -41,8 +48,13 @@ public class Request
         RequestId = Interlocked.Increment(ref _nextRequestId);
         PickupFloor = pickupFloor;
         DestinationFloor = destinationFloor;
-        Priority = priority;
         Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // Set access level (default to Standard if not provided)
+        AccessLevel = accessLevel ?? AccessLevel.Standard;
+
+        // VIP requests automatically get High priority
+        Priority = AccessLevel.IsVIP ? RequestPriority.High : priority;
 
         // Auto-calculate direction
         Direction = destinationFloor > pickupFloor ? Direction.UP : Direction.DOWN;
@@ -51,6 +63,7 @@ public class Request
     public override string ToString()
     {
         var priorityStr = Priority != RequestPriority.Normal ? $" [{Priority}]" : "";
-        return $"Request #{RequestId}: Floor {PickupFloor} → {DestinationFloor} ({Direction}){priorityStr}";
+        var vipStr = AccessLevel.IsVIP ? " [VIP]" : "";
+        return $"Request #{RequestId}: Floor {PickupFloor} → {DestinationFloor} ({Direction}){priorityStr}{vipStr}";
     }
 }
