@@ -174,4 +174,62 @@ public class RequestTests
         act.Should().Throw<ArgumentOutOfRangeException>()
             .WithMessage("*Pickup floor must be between 1 and 10*");
     }
+
+    [Fact]
+    public void Constructor_DefaultPriority_IsNormal()
+    {
+        // Arrange & Act
+        var request = new Request(pickupFloor: 1, destinationFloor: 5);
+
+        // Assert
+        request.Priority.Should().Be(RequestPriority.Normal);
+    }
+
+    [Fact]
+    public void Constructor_WithPriority_StoresPriority()
+    {
+        // Arrange & Act
+        var request = new Request(pickupFloor: 1, destinationFloor: 5, priority: RequestPriority.High);
+
+        // Assert
+        request.Priority.Should().Be(RequestPriority.High);
+    }
+
+    [Theory]
+    [InlineData(RequestPriority.Normal)]
+    [InlineData(RequestPriority.High)]
+    public void Constructor_AllPriorityLevels_Valid(RequestPriority priority)
+    {
+        // Arrange & Act
+        var request = new Request(pickupFloor: 1, destinationFloor: 10, priority: priority);
+
+        // Assert
+        request.Priority.Should().Be(priority);
+    }
+
+    [Fact]
+    public void ToString_WithHighPriority_IncludesPriorityInOutput()
+    {
+        // Arrange
+        var request = new Request(pickupFloor: 5, destinationFloor: 10, priority: RequestPriority.High);
+
+        // Act
+        var result = request.ToString();
+
+        // Assert
+        result.Should().Contain("[High]");
+    }
+
+    [Fact]
+    public void ToString_WithNormalPriority_OmitsPriorityFromOutput()
+    {
+        // Arrange
+        var request = new Request(pickupFloor: 5, destinationFloor: 10, priority: RequestPriority.Normal);
+
+        // Act
+        var result = request.ToString();
+
+        // Assert
+        result.Should().NotContain("[Normal]");
+    }
 }

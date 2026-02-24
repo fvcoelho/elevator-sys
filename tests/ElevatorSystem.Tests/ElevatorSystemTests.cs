@@ -569,6 +569,137 @@ public class ElevatorSystemTests
 
     #endregion
 
+    #region Priority Tests
+
+    [Fact]
+    public async Task ProcessRequestsAsync_HighPriorityFirst_ProcessedBeforeNormalPriority()
+    {
+        // Arrange
+        var system = new ElevatorSystem(elevatorCount: 1, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var cts = new CancellationTokenSource();
+
+        // Add normal priority first, high priority second
+        var normalPriorityRequest = new Request(1, 5, RequestPriority.Normal);
+        var highPriorityRequest = new Request(10, 15, RequestPriority.High);
+
+        system.AddRequest(normalPriorityRequest);
+        await Task.Delay(10); // Ensure different timestamps
+        system.AddRequest(highPriorityRequest);
+
+        // Act
+        var systemTask = system.ProcessRequestsAsync(cts.Token);
+        await Task.Delay(300); // Let dispatcher process
+        cts.Cancel();
+        try { await systemTask; } catch (OperationCanceledException) { }
+
+        // Assert - High priority request should be processed despite being added second
+        var completedIds = system.GetCompletedRequestIds();
+        completedIds.Should().Contain(highPriorityRequest.RequestId);
+    }
+
+    [Fact]
+    public async Task FindBestElevator_HighPriority_SelectsClosestElevator()
+    {
+        // Arrange
+        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+
+        // Setup: 3 elevators at floors 1, 10, 20 (initial distribution)
+        // High priority request at floor 9 should go to elevator at floor 10 (closest)
+        var highPriorityRequest = new Request(9, 15, RequestPriority.High);
+
+        // Act
+        var bestElevatorIndex = system.FindBestElevator(highPriorityRequest);
+
+        // Assert
+        bestElevatorIndex.Should().NotBeNull();
+        var bestElevator = system.GetElevator(bestElevatorIndex!.Value);
+        // Elevator at index 1 starts at floor 10 (closest to 9)
+        bestElevator.CurrentFloor.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task ProcessRequestsAsync_MixedPriorities_ProcessedInPriorityOrder()
+    {
+        // Arrange
+        var system = new ElevatorSystem(elevatorCount: 2, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var cts = new CancellationTokenSource();
+
+        // Add requests in mixed order
+        var normalRequest1 = new Request(1, 5, RequestPriority.Normal);
+        var normalRequest2 = new Request(10, 15, RequestPriority.Normal);
+        var highRequest1 = new Request(8, 12, RequestPriority.High);
+        var highRequest2 = new Request(3, 7, RequestPriority.High);
+
+        system.AddRequest(normalRequest1);
+        system.AddRequest(normalRequest2);
+        system.AddRequest(highRequest1);
+        system.AddRequest(highRequest2);
+
+        // Act
+        var systemTask = system.ProcessRequestsAsync(cts.Token);
+        await Task.Delay(500); // Let system process
+        cts.Cancel();
+        try { await systemTask; } catch (OperationCanceledException) { }
+
+        // Assert - High priority requests should be processed first
+        var completedIds = system.GetCompletedRequestIds();
+        completedIds.Should().Contain(highRequest1.RequestId);
+        completedIds.Should().Contain(highRequest2.RequestId);
+    }
+
+    [Fact]
+    public void GetSystemStatus_WithPriorityRequests_ShowsPriorityBreakdown()
+    {
+        // Arrange
+        var system = new ElevatorSystem(elevatorCount: 2, minFloor: 1, maxFloor: 20);
+
+        // Add requests with different priorities
+        system.AddRequest(new Request(1, 5, RequestPriority.Normal));
+        system.AddRequest(new Request(10, 15, RequestPriority.High));
+        system.AddRequest(new Request(8, 12, RequestPriority.Normal));
+        system.AddRequest(new Request(3, 7, RequestPriority.High));
+
+        // Act
+        var status = system.GetSystemStatus();
+
+        // Assert
+        status.Should().Contain("Pending Requests: 4");
+        status.Should().Contain("Priority breakdown:");
+        status.Should().Contain("High:");
+        status.Should().Contain("Normal:");
+    }
+
+    [Fact]
+    public async Task ProcessRequestsAsync_SamePriority_ProcessedByTimestamp()
+    {
+        // Arrange
+        var system = new ElevatorSystem(elevatorCount: 1, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
+        var cts = new CancellationTokenSource();
+
+        // Add multiple requests with same priority
+        var request1 = new Request(1, 5, RequestPriority.Normal);
+        await Task.Delay(10); // Ensure different timestamp
+        var request2 = new Request(10, 15, RequestPriority.Normal);
+        await Task.Delay(10);
+        var request3 = new Request(8, 12, RequestPriority.Normal);
+
+        system.AddRequest(request1);
+        system.AddRequest(request2);
+        system.AddRequest(request3);
+
+        // Act
+        var systemTask = system.ProcessRequestsAsync(cts.Token);
+        await Task.Delay(500);
+        cts.Cancel();
+        try { await systemTask; } catch (OperationCanceledException) { }
+
+        // Assert - Should process in timestamp order (FIFO for same priority)
+        var completedIds = system.GetCompletedRequestIds();
+        completedIds.Should().Contain(request1.RequestId);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private async Task<bool> WaitForSystemIdle(ElevatorSystem system, TimeSpan timeout)

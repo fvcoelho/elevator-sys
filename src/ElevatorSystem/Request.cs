@@ -8,9 +8,10 @@ public class Request
     public int PickupFloor { get; }
     public int DestinationFloor { get; }
     public Direction Direction { get; }
+    public RequestPriority Priority { get; }
     public long Timestamp { get; }
 
-    public Request(int pickupFloor, int destinationFloor, int minFloor = 1, int maxFloor = 20)
+    public Request(int pickupFloor, int destinationFloor, RequestPriority priority = RequestPriority.Normal, int minFloor = 1, int maxFloor = 20)
     {
         // Validate pickup floor
         if (pickupFloor < minFloor || pickupFloor > maxFloor)
@@ -40,6 +41,7 @@ public class Request
         RequestId = Interlocked.Increment(ref _nextRequestId);
         PickupFloor = pickupFloor;
         DestinationFloor = destinationFloor;
+        Priority = priority;
         Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
         // Auto-calculate direction
@@ -48,6 +50,7 @@ public class Request
 
     public override string ToString()
     {
-        return $"Request #{RequestId}: Floor {PickupFloor} → {DestinationFloor} ({Direction})";
+        var priorityStr = Priority != RequestPriority.Normal ? $" [{Priority}]" : "";
+        return $"Request #{RequestId}: Floor {PickupFloor} → {DestinationFloor} ({Direction}){priorityStr}";
     }
 }

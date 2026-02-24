@@ -69,24 +69,43 @@ var fileMonitorTask = Task.Run(async () =>
                 {
                     // Parse filename:
                     // Format: "20260223_214530_123_from_5_to_15.txt" (7 parts with milliseconds)
+                    // Or: "20260223_214530_123_from_5_to_15_H.txt" (8 parts with priority)
                     var nameWithoutExt = filename.Replace(".txt", "");
                     var parts = nameWithoutExt.Split('_');
 
-                    // Determine format and extract pickup/destination
+                    // Determine format and extract pickup/destination/priority
                     int pickup = 0, destination = 0;
+                    RequestPriority priority = RequestPriority.Normal;
                     bool validFormat = false;
 
                     if (parts.Length == 7 && parts[3] == "from" && parts[5] == "to")
                     {
-                        // Format with milliseconds
+                        // Format with milliseconds (no priority)
                         validFormat = int.TryParse(parts[4], out pickup) &&
                                      int.TryParse(parts[6], out destination);
+                    }
+                    else if (parts.Length == 8 && parts[3] == "from" && parts[5] == "to")
+                    {
+                        // Format with milliseconds and priority
+                        validFormat = int.TryParse(parts[4], out pickup) &&
+                                     int.TryParse(parts[6], out destination);
+
+                        if (validFormat)
+                        {
+                            // Parse priority from last part
+                            priority = parts[7].ToUpper() switch
+                            {
+                                "H" or "HIGH" => RequestPriority.High,
+                                "N" or "NORMAL" => RequestPriority.Normal,
+                                _ => RequestPriority.Normal
+                            };
+                        }
                     }
 
                     if (validFormat)
                     {
                         // Create request
-                        var request = new Request(pickup, destination, MIN_FLOOR, MAX_FLOOR);
+                        var request = new Request(pickup, destination, priority, MIN_FLOOR, MAX_FLOOR);
                         system.AddRequest(request);
 
                         // Mark as processed
@@ -97,7 +116,7 @@ var fileMonitorTask = Task.Run(async () =>
                         File.Move(filepath, processedPath);
 
                         Console.WriteLine($"[FILE] Processed and archived: {filename} (Request #{request.RequestId})");
-                    }                    
+                    }
                     else
                     {
                         Console.WriteLine($"[FILE] Invalid filename format: {filename}");
@@ -163,10 +182,20 @@ while (true)
                 break;
             }
 
+            // Get priority
+            Console.Write("Priority [N]ormal / [H]igh (default: Normal): ");
+            var priorityInput = Console.ReadLine()?.Trim().ToUpper();
+
+            RequestPriority priority = priorityInput switch
+            {
+                "H" => RequestPriority.High,
+                _ => RequestPriority.Normal
+            };
+
             // Create and add request
             try
             {
-                var request = new Request(pickupFloor, destinationFloor, MIN_FLOOR, MAX_FLOOR);
+                var request = new Request(pickupFloor, destinationFloor, priority, MIN_FLOOR, MAX_FLOOR);
                 system.AddRequest(request);
                 Console.WriteLine();
             }

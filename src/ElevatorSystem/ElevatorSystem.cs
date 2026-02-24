@@ -9,6 +9,7 @@ internal class RequestProgress
     public int RequestId { get; set; }
     public int PickupFloor { get; set; }
     public int DestinationFloor { get; set; }
+    public RequestPriority Priority { get; set; }
     public int AssignedElevatorIndex { get; set; }
     public bool PickupReached { get; set; }
     public bool DestinationReached { get; set; }
@@ -197,6 +198,22 @@ public class ElevatorSystem
         status.AppendLine();
         status.AppendLine($"Pending Requests: {PendingRequestCount}");
 
+        // Show priority breakdown if requests exist
+        if (PendingRequestCount > 0)
+        {
+            var requestsList = _requests.ToArray();
+            var priorityCounts = requestsList
+                .GroupBy(r => r.Priority)
+                .OrderByDescending(g => g.Key)
+                .Select(g => $"{g.Key}: {g.Count()}")
+                .ToArray();
+
+            if (priorityCounts.Any())
+            {
+                status.AppendLine($"  Priority breakdown: {string.Join(", ", priorityCounts)}");
+            }
+        }
+
         return status.ToString();
     }
 
@@ -233,6 +250,19 @@ public class ElevatorSystem
                 }
             }
 
+            // For HIGH priority, ignore idle preference and return absolutely closest
+            if (request.Priority == RequestPriority.High)
+            {
+                var allElevators = idleElevators.Concat(busyElevators);
+                if (allElevators.Any())
+                {
+                    var best = allElevators.OrderBy(e => e.distance).First();
+                    return best.index;
+                }
+                return null;
+            }
+
+            // For NORMAL priority, maintain existing idle preference logic
             // Prefer idle elevators
             if (idleElevators.Any())
             {
@@ -279,6 +309,7 @@ public class ElevatorSystem
             RequestId = request.RequestId,
             PickupFloor = request.PickupFloor,
             DestinationFloor = request.DestinationFloor,
+            Priority = request.Priority,
             AssignedElevatorIndex = elevatorIndex,
             PickupReached = false,
             DestinationReached = false
@@ -313,12 +344,26 @@ public class ElevatorSystem
             _elevatorTasks.Add(task);
         }
 
-        // Main dispatcher loop - process incoming requests
+        // Main dispatcher loop - process incoming requests with priority sorting
         while (!cancellationToken.IsCancellationRequested)
         {
-            if (_requests.TryDequeue(out var request))
+            // Dequeue all pending requests for priority sorting
+            var pendingRequests = new List<Request>();
+            while (_requests.TryDequeue(out var req))
             {
-                // Find best elevator and assign the request
+                pendingRequests.Add(req);
+            }
+
+            if (pendingRequests.Any())
+            {
+                // Sort by priority (descending) then timestamp (ascending)
+                var sortedRequests = pendingRequests
+                    .OrderByDescending(r => r.Priority)
+                    .ThenBy(r => r.Timestamp)
+                    .ToList();
+
+                // Process highest priority request
+                var request = sortedRequests.First();
                 var bestElevatorIndex = FindBestElevator(request);
 
                 if (bestElevatorIndex.HasValue)
@@ -330,6 +375,12 @@ public class ElevatorSystem
                     // No elevator available - re-enqueue the request
                     _requests.Enqueue(request);
                     Console.WriteLine($"[SYSTEM] No elevator available, re-queueing {request}");
+                }
+
+                // Re-enqueue remaining requests
+                foreach (var remainingRequest in sortedRequests.Skip(1))
+                {
+                    _requests.Enqueue(remainingRequest);
                 }
             }
 

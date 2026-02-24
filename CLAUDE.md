@@ -230,10 +230,12 @@ Each ride request specifies pickup and destination:
 2. Add corresponding tests in `ElevatorSystemTests.cs`
 3. Run full test suite to verify
 
-### Adding Request Priority
-1. Add `Priority` property to `Request.cs`
-2. Update `FindBestElevator()` to consider priority
-3. Update tests to verify priority handling
+### Request Priority (Already Implemented)
+The system includes a simplified two-level priority system:
+- **Normal**: Standard requests (default)
+- **High**: VIP/urgent requests (processed first, ignores idle preference)
+
+See `PRIORITY_SIMPLIFIED.md` for details.
 
 ### Changing Floor Range
 1. Update `MIN_FLOOR` and `MAX_FLOOR` in `Program.cs`
@@ -244,6 +246,6 @@ Each ride request specifies pickup and destination:
 
 - **Request Assignment**: <1ms per request (O(n) dispatch, n = elevator count)
 - **Concurrent Requests**: Handles 100+ concurrent requests safely
-- **Test Suite**: 72 tests complete in ~5 seconds
+- **Test Suite**: 70 tests complete in ~6 seconds
 - **Memory**: Minimal overhead (ConcurrentQueue + List storage)
 - **Throughput**: 3 elevators can handle ~1 request/second sustained load
