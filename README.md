@@ -39,7 +39,7 @@ Open separate terminals for each component:
 # Terminal 1: Main application
 dotnet run --project src/ElevatorSystem/ElevatorSystem.csproj
 
-# Terminal 2: Elevator panel (external requests)
+# Terminal 2: Elevator painel (external requests)
 dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj
 
 # Terminals 3-5: Log monitors
@@ -131,7 +131,7 @@ SCAN and LOOK algorithms provide sweep-motion optimization for higher throughput
 elevator-sys/
 ├── src/
 │   ├── ElevatorSystem/          # Main application
-│   └── ElevatorPainel/          # External panel client
+│   └── ElevatorPainel/          # External painel client
 ├── tests/
 │   └── ElevatorSystem.Tests/    # 134 tests
 ├── logs/                        # Per-elevator log files
