@@ -1,0 +1,34 @@
+Summary
+  Generated on: 24/02/2026 - 18:09:52
+  Coverage date: 24/02/2026 - 18:06:52
+  Parser: Cobertura
+  Assemblies: 1
+  Classes: 12
+  Files: 9
+  Line coverage: 74.2%
+  Covered lines: 956
+  Uncovered lines: 332
+  Coverable lines: 1288
+  Total lines: 2085
+  Branch coverage: 72.3% (243 of 336)
+  Covered branches: 243
+  Total branches: 336
+  Method coverage: 96% (123 of 128)
+  Full method coverage: 86.7% (111 of 128)
+  Covered methods: 123
+  Fully covered methods: 111
+  Total methods: 128
+
+ElevatorSystem                        74.2%
+  ElevatorSystem.AccessLevel           100%
+  ElevatorSystem.Elevator             95.2%
+  ElevatorSystem.ElevatorConfig        100%
+  ElevatorSystem.ElevatorFileLogger     80%
+  ElevatorSystem.ElevatorMetrics       100%
+  ElevatorSystem.ElevatorSystem       94.6%
+  ElevatorSystem.FloorRestriction      100%
+  ElevatorSystem.PerformanceMetrics    100%
+  ElevatorSystem.PerformanceTracker    100%
+  ElevatorSystem.Request               100%
+  ElevatorSystem.RequestProgress       100%
+  Program                                0%
