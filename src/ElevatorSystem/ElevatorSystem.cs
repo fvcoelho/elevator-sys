@@ -2,6 +2,18 @@ using System.Collections.Concurrent;
 
 namespace ElevatorSystem;
 
+// Track request progress through the system
+internal class RequestProgress
+{
+    public int RequestId { get; set; }
+    public int PickupFloor { get; set; }
+    public int DestinationFloor { get; set; }
+    public int AssignedElevatorIndex { get; set; }
+    public bool PickupReached { get; set; }
+    public bool DestinationReached { get; set; }
+    public bool IsComplete => PickupReached && DestinationReached;
+}
+
 public class ElevatorSystem
 {
     private readonly List<Elevator> _elevators;
@@ -10,6 +22,10 @@ public class ElevatorSystem
     private readonly int _minFloor;
     private readonly int _maxFloor;
     private readonly List<Task> _elevatorTasks = new();
+
+    // Completion tracking
+    private readonly ConcurrentDictionary<int, RequestProgress> _activeRequests = new();
+    private readonly ConcurrentBag<int> _completedRequestIds = new();
 
     public int ElevatorCount => _elevators.Count;
     public int PendingRequestCount => _requests.Count;
@@ -204,6 +220,18 @@ public class ElevatorSystem
 
         var elevator = _elevators[elevatorIndex];
 
+        // Track this request for completion detection
+        var progress = new RequestProgress
+        {
+            RequestId = request.RequestId,
+            PickupFloor = request.PickupFloor,
+            DestinationFloor = request.DestinationFloor,
+            AssignedElevatorIndex = elevatorIndex,
+            PickupReached = false,
+            DestinationReached = false
+        };
+        _activeRequests[request.RequestId] = progress;
+
         // Add pickup floor first, then destination floor
         // This ensures the elevator goes to pickup the passenger before going to their destination
         elevator.AddRequest(request.PickupFloor);
@@ -277,6 +305,9 @@ public class ElevatorSystem
                     await elevator.OpenDoor();
                     await elevator.CloseDoor();
                     Console.WriteLine($"[ELEVATOR {GetElevatorLabel(elevatorIndex)}] Arrived at floor {targetFloor}");
+
+                    // Check if this floor completes any requests
+                    CheckRequestCompletion(elevatorIndex, targetFloor);
                 }
             }
             else
@@ -285,5 +316,50 @@ public class ElevatorSystem
                 await Task.Delay(100, cancellationToken);
             }
         }
+    }
+
+    private void CheckRequestCompletion(int elevatorIndex, int reachedFloor)
+    {
+        // Find all active requests assigned to this elevator
+        foreach (var kvp in _activeRequests)
+        {
+            var progress = kvp.Value;
+
+            // Only check requests assigned to this elevator
+            if (progress.AssignedElevatorIndex != elevatorIndex)
+                continue;
+
+            // Check if this floor is the pickup floor
+            if (reachedFloor == progress.PickupFloor && !progress.PickupReached)
+            {
+                progress.PickupReached = true;
+                Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: Pickup complete at floor {reachedFloor}");
+            }
+
+            // Check if this floor is the destination floor
+            if (reachedFloor == progress.DestinationFloor && !progress.DestinationReached)
+            {
+                progress.DestinationReached = true;
+                Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: Destination complete at floor {reachedFloor}");
+            }
+
+            // If both pickup and destination are reached, mark as complete
+            if (progress.IsComplete)
+            {
+                _completedRequestIds.Add(progress.RequestId);
+                _activeRequests.TryRemove(progress.RequestId, out _);
+                Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: FULLY COMPLETE");
+            }
+        }
+    }
+
+    public List<int> GetCompletedRequestIds()
+    {
+        return _completedRequestIds.ToList();
+    }
+
+    public void ClearCompletedRequestIds()
+    {
+        _completedRequestIds.Clear();
     }
 }

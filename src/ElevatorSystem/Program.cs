@@ -22,8 +22,14 @@ if (!File.Exists(REQUEST_FILE))
     File.WriteAllText(REQUEST_FILE, "# Elevator Requests (format: pickup destination)\n");
 }
 
-// Track last file position for incremental reading
-var lastFilePosition = 0L;
+// Track processed lines to avoid reprocessing
+var processedLines = new HashSet<string>();
+
+// Track request ID to line content mapping for completion updates
+var requestIdToLineContent = new Dictionary<int, string>();
+
+// Lock for file updates
+var fileLock = new object();
 
 // Create cancellation token source
 using var cts = new CancellationTokenSource();
@@ -50,39 +56,120 @@ var fileMonitorTask = Task.Run(async () =>
         {
             if (File.Exists(REQUEST_FILE))
             {
-                var fileInfo = new FileInfo(REQUEST_FILE);
-                if (fileInfo.Length > lastFilePosition)
+                List<string> allLines;
+                lock (fileLock)
                 {
-                    using var reader = new StreamReader(REQUEST_FILE);
-                    reader.BaseStream.Seek(lastFilePosition, SeekOrigin.Begin);
+                    allLines = File.ReadAllLines(REQUEST_FILE).ToList();
+                }
 
-                    string? line;
-                    while ((line = reader.ReadLine()) != null)
+                for (int i = 0; i < allLines.Count; i++)
+                {
+                    var line = allLines[i];
+
+                    // Skip comments and empty lines
+                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#"))
+                        continue;
+
+                    // Check if already processed
+                    if (processedLines.Contains(line))
+                        continue;
+
+                    // Extract request data (without any existing status)
+                    var requestPart = line.Split('#')[0].Trim();
+                    var parts = requestPart.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                    if (parts.Length >= 2 &&
+                        int.TryParse(parts[0], out int pickup) &&
+                        int.TryParse(parts[1], out int destination))
                     {
-                        // Skip comments and empty lines
-                        if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#"))
-                            continue;
+                        // Check if line already has a status
+                        bool hasStatus = line.Contains("# waiting") || line.Contains("# doing") || line.Contains("# done") || line.Contains("# error");
 
-                        // Parse "pickup destination" format
-                        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length == 2 &&
-                            int.TryParse(parts[0], out int pickup) &&
-                            int.TryParse(parts[1], out int destination))
+                        if (!hasStatus)
                         {
+                            // Mark as waiting
+                            allLines[i] = $"{requestPart} # waiting";
+                            processedLines.Add(line);
+
+                            lock (fileLock)
+                            {
+                                File.WriteAllLines(REQUEST_FILE, allLines);
+                            }
+
+                            Console.WriteLine($"[FILE] Status: waiting - {pickup} → {destination}");
+                            await Task.Delay(100); // Small delay before processing
+                        }
+                        else if (line.Contains("# waiting"))
+                        {
+                            // Process waiting request
                             try
                             {
                                 var request = new Request(pickup, destination, MIN_FLOOR, MAX_FLOOR);
                                 system.AddRequest(request);
-                                Console.WriteLine($"[FILE] Request added from file: {pickup} → {destination}");
+                                Console.WriteLine($"[FILE] Request added to system: {pickup} → {destination}");
+
+                                // Track this request ID for completion updates
+                                requestIdToLineContent[request.RequestId] = requestPart;
+
+                                // Mark as doing (being processed)
+                                allLines[i] = $"{requestPart} # doing";
+                                processedLines.Add(line);
+
+                                lock (fileLock)
+                                {
+                                    File.WriteAllLines(REQUEST_FILE, allLines);
+                                }
+
+                                Console.WriteLine($"[FILE] Status: doing - {pickup} → {destination} (Request #{request.RequestId})");
                             }
                             catch (ArgumentException ex)
                             {
-                                Console.WriteLine($"[FILE] Invalid request in file: {line} - {ex.Message}");
+                                Console.WriteLine($"[FILE] Invalid request: {line} - {ex.Message}");
+
+                                // Mark as error
+                                allLines[i] = $"{requestPart} # error: {ex.Message}";
+                                processedLines.Add(line);
+
+                                lock (fileLock)
+                                {
+                                    File.WriteAllLines(REQUEST_FILE, allLines);
+                                }
                             }
                         }
                     }
+                }
 
-                    lastFilePosition = fileInfo.Length;
+                // Check for completed requests and update file
+                var completedIds = system.GetCompletedRequestIds();
+                if (completedIds.Any())
+                {
+                    foreach (var completedId in completedIds)
+                    {
+                        if (requestIdToLineContent.TryGetValue(completedId, out var lineContent))
+                        {
+                            // Find and update the line in the file
+                            lock (fileLock)
+                            {
+                                var currentLines = File.ReadAllLines(REQUEST_FILE).ToList();
+                                for (int i = 0; i < currentLines.Count; i++)
+                                {
+                                    if (currentLines[i].StartsWith(lineContent) && currentLines[i].Contains("# doing"))
+                                    {
+                                        currentLines[i] = $"{lineContent} # done";
+                                        File.WriteAllLines(REQUEST_FILE, currentLines);
+                                        Console.WriteLine($"[FILE] Status: done - {lineContent} (Request #{completedId})");
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Remove from tracking
+                            requestIdToLineContent.Remove(completedId);
+                        }
+                    }
+
+                    // Clear completed requests from system
+                    system.ClearCompletedRequestIds();
                 }
             }
         }
