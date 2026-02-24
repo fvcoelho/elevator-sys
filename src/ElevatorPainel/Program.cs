@@ -125,12 +125,18 @@ class Program
             return;
         }
 
+        // Get priority
+        Console.Write("High priority? [y/N]: ");
+        var priorityInput = Console.ReadLine()?.Trim().ToUpper();
+        bool highPriority = priorityInput == "Y" || priorityInput == "YES";
+
         // Write to file
-        var filename = WriteRequest(pickup.Value, destination.Value);
+        var filename = WriteRequest(pickup.Value, destination.Value, highPriority);
         if (filename != null)
         {
             Console.WriteLine();
-            Console.WriteLine($"✓ Request added: {pickup.Value} → {destination.Value}");
+            var priorityLabel = highPriority ? " [HIGH]" : "";
+            Console.WriteLine($"✓ Request added: {pickup.Value} → {destination.Value}{priorityLabel}");
             Console.WriteLine($"  Created file: {filename}");
             Console.WriteLine();
             Console.WriteLine("Press any key to continue...");
@@ -179,15 +185,16 @@ class Program
         return floor >= MIN_FLOOR && floor <= MAX_FLOOR;
     }
 
-    static string? WriteRequest(int pickup, int destination)
+    static string? WriteRequest(int pickup, int destination, bool highPriority = false)
     {
         try
         {
             // Generate timestamp with milliseconds to prevent collisions
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
 
-            // Create filename
-            var filename = $"{timestamp}_from_{pickup}_to_{destination}.txt";
+            // Create filename (append _H for high priority)
+            var prioritySuffix = highPriority ? "_H" : "";
+            var filename = $"{timestamp}_from_{pickup}_to_{destination}{prioritySuffix}.txt";
             var filepath = Path.Combine(REQUESTS_DIR, filename);
 
             // Write request to individual file
