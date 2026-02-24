@@ -1,10 +1,10 @@
-# RequestWriter
+# ElevatorPainel
 
 A console application for submitting elevator requests to the multi-elevator system via a shared file.
 
 ## Overview
 
-RequestWriter allows you to submit elevator ride requests that are automatically picked up and processed by the main ElevatorSystem application. This enables:
+ElevatorPainel allows you to submit elevator ride requests that are automatically picked up and processed by the main ElevatorSystem application. This enables:
 - External request submission
 - Automated testing scenarios
 - Load testing
@@ -18,7 +18,7 @@ Run the application without arguments to enter interactive mode:
 
 ```bash
 cd /Users/fvcoelho/Working/elevator-sys
-dotnet run --project src/RequestWriter/RequestWriter.csproj
+dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj
 ```
 
 You'll see:
@@ -46,12 +46,12 @@ The request will be written to `elevator_requests.txt` and picked up by the elev
 Submit a single request directly:
 
 ```bash
-dotnet run --project src/RequestWriter/RequestWriter.csproj -- <pickup> <destination>
+dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj -- <pickup> <destination>
 ```
 
 Example:
 ```bash
-dotnet run --project src/RequestWriter/RequestWriter.csproj -- 5 15
+dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj -- 5 15
 # Output: ✓ Request added: 5 → 15
 ```
 
@@ -68,7 +68,7 @@ dotnet run --project src/ElevatorSystem/ElevatorSystem.csproj
 **Terminal 2 - Request Writer:**
 ```bash
 cd /Users/fvcoelho/Working/elevator-sys
-dotnet run --project src/RequestWriter/RequestWriter.csproj
+dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj
 ```
 
 Add requests in Terminal 2 and watch them being processed in Terminal 1!
@@ -112,7 +112,7 @@ Example file contents:
 ## Building
 
 ```bash
-dotnet build src/RequestWriter/RequestWriter.csproj
+dotnet build src/ElevatorPainel/ElevatorPainel.csproj
 ```
 
 ## Technical Details
