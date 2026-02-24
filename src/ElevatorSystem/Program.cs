@@ -6,6 +6,7 @@ const int MIN_FLOOR = 1;
 const int MAX_FLOOR = 20;            // Extended from 10 to 20
 const int DOOR_OPEN_MS = 3000;       // 3 seconds
 const int FLOOR_TRAVEL_MS = 1500;    // 1.5 seconds per floor
+const string REQUEST_FILE = "elevator_requests.txt"; // Request file path
 
 // Create multi-elevator system
 var system = new ElevatorSystem.ElevatorSystem(
@@ -14,6 +15,15 @@ var system = new ElevatorSystem.ElevatorSystem(
     maxFloor: MAX_FLOOR,
     doorOpenMs: DOOR_OPEN_MS,
     floorTravelMs: FLOOR_TRAVEL_MS);
+
+// Initialize request file if it doesn't exist
+if (!File.Exists(REQUEST_FILE))
+{
+    File.WriteAllText(REQUEST_FILE, "# Elevator Requests (format: pickup destination)\n");
+}
+
+// Track last file position for incremental reading
+var lastFilePosition = 0L;
 
 // Create cancellation token source
 using var cts = new CancellationTokenSource();
@@ -31,11 +41,70 @@ var processingTask = Task.Run(async () =>
     }
 }, cts.Token);
 
+// Start file monitoring task in background
+var fileMonitorTask = Task.Run(async () =>
+{
+    while (!cts.Token.IsCancellationRequested)
+    {
+        try
+        {
+            if (File.Exists(REQUEST_FILE))
+            {
+                var fileInfo = new FileInfo(REQUEST_FILE);
+                if (fileInfo.Length > lastFilePosition)
+                {
+                    using var reader = new StreamReader(REQUEST_FILE);
+                    reader.BaseStream.Seek(lastFilePosition, SeekOrigin.Begin);
+
+                    string? line;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        // Skip comments and empty lines
+                        if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#"))
+                            continue;
+
+                        // Parse "pickup destination" format
+                        var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        if (parts.Length == 2 &&
+                            int.TryParse(parts[0], out int pickup) &&
+                            int.TryParse(parts[1], out int destination))
+                        {
+                            try
+                            {
+                                var request = new Request(pickup, destination, MIN_FLOOR, MAX_FLOOR);
+                                system.AddRequest(request);
+                                Console.WriteLine($"[FILE] Request added from file: {pickup} → {destination}");
+                            }
+                            catch (ArgumentException ex)
+                            {
+                                Console.WriteLine($"[FILE] Invalid request in file: {line} - {ex.Message}");
+                            }
+                        }
+                    }
+
+                    lastFilePosition = fileInfo.Length;
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // File is being written to, skip this iteration
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[FILE] Error reading file: {ex.Message}");
+        }
+
+        await Task.Delay(500, cts.Token); // Check every 500ms
+    }
+}, cts.Token);
+
 // Main console interface loop
 Console.WriteLine($"=== ELEVATOR SYSTEM ({ELEVATOR_COUNT} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
 Console.WriteLine("Press [R] to REQUEST a ride");
 Console.WriteLine("Press [S] to view STATUS");
-Console.WriteLine("Press [Q] to QUIT\n");
+Console.WriteLine("Press [Q] to QUIT");
+Console.WriteLine($"\nMonitoring file: {Path.GetFullPath(REQUEST_FILE)}\n");
 
 // Display initial status
 Console.WriteLine(system.GetSystemStatus());
@@ -94,7 +163,7 @@ while (true)
             cts.Cancel();
             try
             {
-                await processingTask;
+                await Task.WhenAll(processingTask, fileMonitorTask);
             }
             catch (OperationCanceledException)
             {
