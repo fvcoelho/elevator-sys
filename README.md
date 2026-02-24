@@ -31,9 +31,9 @@ dotnet build
 dotnet test
 ```
 
-## Running the System
+## Running the System on Mac
 
-Open separate terminals for each component:
+Open separate Terminal windows (or use iTerm2 split panes) for each component:
 
 ```bash
 # Terminal 1: Main application
@@ -50,6 +50,42 @@ tail -f logs/elevator_C.log
 
 Arrange terminals so logs are visible alongside the applications.
 
+If logs directory doesn't exist or logs aren't updating:
+
+```bash
+mkdir -p logs && chmod 755 logs
+```
+
+To stop background processes:
+
+```bash
+pgrep -f "dotnet.*Elevator"
+kill <PID>
+```
+
+## Running the System on Windows
+
+Open separate Command Prompt or PowerShell windows for each component:
+
+```powershell
+# Terminal 1: Main application
+dotnet run --project src\ElevatorSystem\ElevatorSystem.csproj
+
+# Terminal 2: Elevator painel (external requests)
+dotnet run --project src\ElevatorPainel\ElevatorPainel.csproj
+
+# Terminals 3-5: Log monitors (PowerShell)
+Get-Content logs\elevator_A.log -Wait
+Get-Content logs\elevator_B.log -Wait
+Get-Content logs\elevator_C.log -Wait
+```
+
+If logs directory doesn't exist:
+
+```powershell
+mkdir logs
+```
+
 ### Controls
 
 | Key | Action |
@@ -60,19 +96,6 @@ Arrange terminals so logs are visible alongside the applications.
 | **D** | Change dispatch algorithm (Simple/SCAN/LOOK) |
 | **M** | Toggle elevator maintenance mode |
 | **Q** | Quit |
-
-### Troubleshooting
-
-If logs aren't updating:
-```bash
-mkdir -p logs && chmod 755 logs
-```
-
-If ports are in use:
-```bash
-pgrep -f "dotnet.*Elevator"
-kill <PID>
-```
 
 ## Architecture
 
