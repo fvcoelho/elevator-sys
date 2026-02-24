@@ -67,7 +67,7 @@ class Program
     {
         while (true)
         {
-            Console.WriteLine("[A] Add Request");
+            Console.WriteLine("[R] Request");
             Console.WriteLine("[G] Generate Traffic (Light/Moderate/Rush Hour)");
             Console.WriteLine("[Q] Quit");
             Console.WriteLine();
@@ -79,7 +79,7 @@ class Program
 
             switch (char.ToUpper(key.KeyChar))
             {
-                case 'A':
+                case 'R':
                     AddRequest();
                     break;
                 case 'G':
