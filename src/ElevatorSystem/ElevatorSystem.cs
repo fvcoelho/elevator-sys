@@ -27,6 +27,11 @@ public class ElevatorSystem
     private readonly ConcurrentDictionary<int, RequestProgress> _activeRequests = new();
     private readonly ConcurrentBag<int> _completedRequestIds = new();
 
+    // Logging
+    private readonly string _logsDirectory = "logs";
+    private readonly Dictionary<int, StreamWriter> _elevatorLogs = new();
+    private readonly object _logLock = new();
+
     public int ElevatorCount => _elevators.Count;
     public int PendingRequestCount => _requests.Count;
 
@@ -48,6 +53,12 @@ public class ElevatorSystem
         _maxFloor = maxFloor;
         _elevators = new List<Elevator>(elevatorCount);
 
+        // Create logs directory if it doesn't exist
+        if (!Directory.Exists(_logsDirectory))
+        {
+            Directory.CreateDirectory(_logsDirectory);
+        }
+
         // Initialize elevators at evenly distributed floors for better coverage
         var initialFloors = CalculateInitialFloors(elevatorCount, minFloor, maxFloor);
 
@@ -62,6 +73,14 @@ public class ElevatorSystem
                 label: GetElevatorLabel(i));
 
             _elevators.Add(elevator);
+
+            // Initialize log file for this elevator
+            var logFileName = $"elevator_{GetElevatorLabel(i)}.log";
+            var logFilePath = Path.Combine(_logsDirectory, logFileName);
+            var logWriter = new StreamWriter(logFilePath, append: true) { AutoFlush = true };
+            _elevatorLogs[i] = logWriter;
+
+            LogElevatorEvent(i, $"=== Elevator {GetElevatorLabel(i)} initialized at floor {initialFloors[i]} ===");
         }
     }
 
@@ -232,6 +251,9 @@ public class ElevatorSystem
         };
         _activeRequests[request.RequestId] = progress;
 
+        // Log request assignment
+        LogElevatorEvent(elevatorIndex, $"Request #{request.RequestId} ASSIGNED: {request.PickupFloor} → {request.DestinationFloor} ({request.Direction})");
+
         // Add pickup floor first, then destination floor
         // This ensures the elevator goes to pickup the passenger before going to their destination
         elevator.AddRequest(request.PickupFloor);
@@ -286,16 +308,20 @@ public class ElevatorSystem
         {
             if (elevator.TryGetNextTarget(out int targetFloor))
             {
+                LogElevatorEvent(elevatorIndex, $"Target floor: {targetFloor} | Current floor: {elevator.CurrentFloor}");
+
                 // Move to target floor
                 while (elevator.CurrentFloor != targetFloor && !cancellationToken.IsCancellationRequested)
                 {
                     if (elevator.CurrentFloor < targetFloor)
                     {
                         await elevator.MoveUp();
+                        LogElevatorEvent(elevatorIndex, $"State: MOVING_UP | Floor: {elevator.CurrentFloor}");
                     }
                     else if (elevator.CurrentFloor > targetFloor)
                     {
                         await elevator.MoveDown();
+                        LogElevatorEvent(elevatorIndex, $"State: MOVING_DOWN | Floor: {elevator.CurrentFloor}");
                     }
                 }
 
@@ -303,7 +329,11 @@ public class ElevatorSystem
                 if (!cancellationToken.IsCancellationRequested)
                 {
                     await elevator.OpenDoor();
+                    LogElevatorEvent(elevatorIndex, $"State: DOOR_OPEN | Floor: {targetFloor}");
+
                     await elevator.CloseDoor();
+                    LogElevatorEvent(elevatorIndex, $"State: IDLE | Arrived at floor {targetFloor}");
+
                     Console.WriteLine($"[ELEVATOR {GetElevatorLabel(elevatorIndex)}] Arrived at floor {targetFloor}");
 
                     // Check if this floor completes any requests
@@ -333,6 +363,7 @@ public class ElevatorSystem
             if (reachedFloor == progress.PickupFloor && !progress.PickupReached)
             {
                 progress.PickupReached = true;
+                LogElevatorEvent(elevatorIndex, $"Request #{progress.RequestId}: PICKUP complete (Floor {reachedFloor} → {progress.DestinationFloor})");
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: Pickup complete at floor {reachedFloor}");
             }
 
@@ -340,6 +371,7 @@ public class ElevatorSystem
             if (reachedFloor == progress.DestinationFloor && !progress.DestinationReached)
             {
                 progress.DestinationReached = true;
+                LogElevatorEvent(elevatorIndex, $"Request #{progress.RequestId}: DESTINATION complete at floor {reachedFloor}");
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: Destination complete at floor {reachedFloor}");
             }
 
@@ -348,6 +380,7 @@ public class ElevatorSystem
             {
                 _completedRequestIds.Add(progress.RequestId);
                 _activeRequests.TryRemove(progress.RequestId, out _);
+                LogElevatorEvent(elevatorIndex, $"Request #{progress.RequestId}: FULLY COMPLETE");
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: FULLY COMPLETE");
             }
         }
@@ -361,5 +394,26 @@ public class ElevatorSystem
     public void ClearCompletedRequestIds()
     {
         _completedRequestIds.Clear();
+    }
+
+    private void LogElevatorEvent(int elevatorIndex, string message)
+    {
+        lock (_logLock)
+        {
+            if (_elevatorLogs.TryGetValue(elevatorIndex, out var logWriter))
+            {
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                logWriter.WriteLine($"[{timestamp}] {message}");
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        foreach (var logWriter in _elevatorLogs.Values)
+        {
+            logWriter?.Dispose();
+        }
+        _elevatorLogs.Clear();
     }
 }

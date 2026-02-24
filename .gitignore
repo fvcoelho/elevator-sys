@@ -95,3 +95,4 @@ orleans.codegen.cs
 # Elevator system runtime directories
 requests/
 processed/
+logs/
