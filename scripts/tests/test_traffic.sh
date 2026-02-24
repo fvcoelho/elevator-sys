@@ -8,7 +8,7 @@ rm -rf requests processed 2>/dev/null
 mkdir -p requests processed
 
 echo "1. Testing Light Traffic Mode..."
-dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj -- --light 2>&1 | tail -3
+dotnet run --project src/ElevatorPanel/ElevatorPanel.csproj -- --light 2>&1 | tail -3
 echo ""
 
 LIGHT_COUNT=$(ls requests/ | wc -l | tr -d ' ')
@@ -30,7 +30,7 @@ echo ""
 rm -rf requests/*.txt 2>/dev/null
 
 echo "3. Testing Moderate Traffic Mode..."
-dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj -- --moderate 2>&1 | tail -3
+dotnet run --project src/ElevatorPanel/ElevatorPanel.csproj -- --moderate 2>&1 | tail -3
 echo ""
 
 MODERATE_COUNT=$(ls requests/ | wc -l | tr -d ' ')
@@ -42,7 +42,7 @@ rm -rf requests processed 2>/dev/null
 mkdir -p requests processed
 
 echo "4. Testing Rush Hour Mode..."
-dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj -- --rush 2>&1 | tail -3
+dotnet run --project src/ElevatorPanel/ElevatorPanel.csproj -- --rush 2>&1 | tail -3
 echo ""
 
 RUSH_COUNT=$(ls requests/ | wc -l | tr -d ' ')

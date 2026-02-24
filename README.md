@@ -39,8 +39,8 @@ Open separate Terminal windows (or use iTerm2 split panes) for each component:
 # Terminal 1: Main application
 dotnet run --project src/ElevatorSystem/ElevatorSystem.csproj
 
-# Terminal 2: Elevator painel (external requests)
-dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj
+# Terminal 2: Elevator panel (external requests)
+dotnet run --project src/ElevatorPanel/ElevatorPanel.csproj
 
 # Terminals 3-5: Log monitors
 tail -f logs/elevator_A.log
@@ -71,8 +71,8 @@ Open separate Command Prompt or PowerShell windows for each component:
 # Terminal 1: Main application
 dotnet run --project src\ElevatorSystem\ElevatorSystem.csproj
 
-# Terminal 2: Elevator painel (external requests)
-dotnet run --project src\ElevatorPainel\ElevatorPainel.csproj
+# Terminal 2: Elevator panel (external requests)
+dotnet run --project src\ElevatorPanel\ElevatorPanel.csproj
 
 # Terminals 3-5: Log monitors (PowerShell)
 Get-Content logs\elevator_A.log -Wait
@@ -154,7 +154,7 @@ SCAN and LOOK algorithms provide sweep-motion optimization for higher throughput
 elevator-sys/
 ├── src/
 │   ├── ElevatorSystem/          # Main application
-│   └── ElevatorPainel/          # External painel client
+│   └── ElevatorPanel/          # External panel client
 ├── tests/
 │   └── ElevatorSystem.Tests/    # 134 tests
 ├── logs/                        # Per-elevator log files
