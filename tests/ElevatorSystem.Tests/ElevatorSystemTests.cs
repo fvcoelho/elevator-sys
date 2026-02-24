@@ -718,7 +718,7 @@ public class ElevatorSystemTests
                 {
                     allIdle = false;
                 }
-                // NEW: Check system-level targets instead of elevator queue
+                // Check system-level targets instead of elevator queue
                 if (system.GetElevatorTargets(i).Any())
                 {
                     allEmpty = false;

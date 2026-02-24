@@ -24,7 +24,7 @@ dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj
 You'll see:
 
 ```
-=== ELEVATOR REQUEST WRITER ===
+=== ELEVATOR PAINEL REQUEST ===
 
 Enter elevator requests to send to the system.
 Requests are written to: /Users/fvcoelho/Working/elevator-sys/elevator_requests.txt

@@ -146,9 +146,10 @@ var fileMonitorTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine($"=== ELEVATOR SYSTEM ({ELEVATOR_COUNT} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
-Console.WriteLine("Press [R] to REQUEST a ride | Press [S] to view STATUS | Press [A] to view ANALYTICS | Press [Q] to QUIT");
+Console.WriteLine("Press [R] REQUEST | [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [Q] QUIT");
 Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
-Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}\n");
+Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}");
+Console.WriteLine($"Current Algorithm: {system.Algorithm}\n");
 
 // Display initial status
 Console.WriteLine(system.GetSystemStatus());
@@ -221,6 +222,39 @@ while (true)
             DisplayAnalytics(system);
             break;
 
+        case 'D':
+            // Change dispatch algorithm
+            Console.WriteLine("\n=== SELECT DISPATCH ALGORITHM ===");
+            Console.WriteLine("  [1] Simple (closest + idle preference)");
+            Console.WriteLine("  [2] SCAN (direction-aware, +100 bonus)");
+            Console.WriteLine("  [3] LOOK (balanced, reverses at last request)");
+            Console.WriteLine($"\nCurrent: {system.Algorithm}");
+            Console.Write("\nSelect algorithm [1-3]: ");
+
+            var algoKey = Console.ReadKey(intercept: true);
+            Console.WriteLine(); // New line after key press
+
+            switch (algoKey.KeyChar)
+            {
+                case '1':
+                    system.Algorithm = ElevatorSystem.DispatchAlgorithm.Simple;
+                    Console.WriteLine("✓ Switched to Simple algorithm");
+                    break;
+                case '2':
+                    system.Algorithm = ElevatorSystem.DispatchAlgorithm.SCAN;
+                    Console.WriteLine("✓ Switched to SCAN algorithm");
+                    break;
+                case '3':
+                    system.Algorithm = ElevatorSystem.DispatchAlgorithm.LOOK;
+                    Console.WriteLine("✓ Switched to LOOK algorithm");
+                    break;
+                default:
+                    Console.WriteLine("✗ Invalid selection - keeping current algorithm");
+                    break;
+            }
+            Console.WriteLine($"Active Algorithm: {system.Algorithm}\n");
+            break;
+
         case 'Q':
             // Quit
             Console.WriteLine("\n\nShutting down elevator system...");
@@ -237,7 +271,7 @@ while (true)
             return;
 
         default:
-            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [Q] Quit\n");
+            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [D] Dispatch | [Q] Quit\n");
             break;
     }
 

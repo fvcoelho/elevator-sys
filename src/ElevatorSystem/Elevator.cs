@@ -120,7 +120,6 @@ public class Elevator
             _currentFloor++;
         }
 
-        //Console.WriteLine($"[ELEVATOR {Label}] moved up to floor {CurrentFloor}");
         _logger?.LogInformation("State: MOVING_UP | Floor: {Floor}", CurrentFloor);
     }
 
@@ -142,7 +141,6 @@ public class Elevator
             _currentFloor--;
         }
 
-        //Console.WriteLine($"[ELEVATOR {Label}] moved down to floor {CurrentFloor}");
         _logger?.LogInformation("State: MOVING_DOWN | Floor: {Floor}", CurrentFloor);
     }
 
@@ -165,7 +163,6 @@ public class Elevator
 
         State = ElevatorState.IDLE;
         _logger?.LogInformation("State: IDLE | Arrived at floor {Floor}", CurrentFloor);
-        await Task.CompletedTask;
     }
 
     public void EnterMaintenance()

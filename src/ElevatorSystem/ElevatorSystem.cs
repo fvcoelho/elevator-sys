@@ -14,7 +14,7 @@ internal class RequestProgress
     public bool PickupReached { get; set; }
     public bool DestinationReached { get; set; }
     public bool IsComplete => PickupReached && DestinationReached;
-    public Queue<int> PendingFloors { get; set; } = new();  // NEW: Track pending floors for this request
+    public Queue<int> PendingFloors { get; set; } = new();
     public long RequestTimestamp { get; set; }
     public long? PickupTimestamp { get; set; }
     public long? DestinationTimestamp { get; set; }
@@ -22,6 +22,16 @@ internal class RequestProgress
 
 public class ElevatorSystem
 {
+    // Dispatch algorithm scoring constants
+    private const int SCAN_DIRECTION_BONUS = 100;
+    private const int SCAN_IDLE_BONUS = 50;
+    private const int LOOK_DIRECTION_BONUS = 75;
+    private const int LOOK_IDLE_BONUS = 60;
+
+    // System timing constants
+    private const int REQUEST_LOOP_DELAY_MS = 50;
+    private const int IDLE_DELAY_MS = 100;
+
     private readonly List<Elevator> _elevators;
     private readonly ConcurrentQueue<Request> _requests = new();
     private readonly object _dispatchLock = new();
@@ -29,7 +39,7 @@ public class ElevatorSystem
     private readonly int _maxFloor;
     private readonly List<Task> _elevatorTasks = new();
 
-    // NEW: Single queue architecture - system-level target management
+    // Single queue architecture - system-level target management
     private readonly Dictionary<int, Queue<int>> _elevatorTargets = new();
     private readonly object _targetLock = new();
 
@@ -354,7 +364,7 @@ public class ElevatorSystem
         for (int i = 0; i < _elevators.Count; i++)
         {
             var elevator = _elevators[i];
-            // NEW: Use system-level targets instead of elevator queue
+            // Use system-level targets instead of elevator queue
             var targets = GetElevatorTargets(i).ToList();
 
             string targetDisplay;
@@ -535,7 +545,7 @@ public class ElevatorSystem
                 // SCAN: Elevator moving in same direction and will pass by pickup floor gets big bonus
                 if (IsElevatorHeadingToward(elevator, request.PickupFloor))
                 {
-                    score += 100; // High bonus for same direction
+                    score += SCAN_DIRECTION_BONUS;
                 }
 
                 // Distance penalty (negative score for distance)
@@ -544,7 +554,7 @@ public class ElevatorSystem
                 // Idle bonus
                 if (elevator.State == ElevatorState.IDLE)
                 {
-                    score += 50;
+                    score += SCAN_IDLE_BONUS;
                 }
 
                 scores.Add((i, score));
@@ -591,7 +601,7 @@ public class ElevatorSystem
                 // since LOOK reverses at last request rather than building end
                 if (IsElevatorHeadingToward(elevator, request.PickupFloor))
                 {
-                    score += 75; // Moderate bonus for same direction
+                    score += LOOK_DIRECTION_BONUS;
                 }
 
                 // Distance penalty
@@ -600,7 +610,7 @@ public class ElevatorSystem
                 // Idle bonus
                 if (elevator.State == ElevatorState.IDLE)
                 {
-                    score += 60; // Slightly higher idle preference than SCAN
+                    score += LOOK_IDLE_BONUS;
                 }
 
                 scores.Add((i, score));
@@ -653,7 +663,7 @@ public class ElevatorSystem
             RequestTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
-        // NEW: Populate pending floors for this request
+        // Populate pending floors for this request
         progress.PendingFloors.Enqueue(request.PickupFloor);
         progress.PendingFloors.Enqueue(request.DestinationFloor);
 
@@ -667,8 +677,6 @@ public class ElevatorSystem
             _elevatorTargets[elevatorIndex].Enqueue(request.DestinationFloor);
         }
 
-        GetSystemStatus(); // Update status display
-        
         Console.WriteLine($"[DISPATCH] {request} → Elevator {GetElevatorLabel(elevatorIndex)} (at floor {elevator.CurrentFloor}, {elevator.State})");
     }
 
@@ -728,7 +736,7 @@ public class ElevatorSystem
             }
 
             // Small delay to prevent tight loop
-            await Task.Delay(50, cancellationToken);
+            await Task.Delay(REQUEST_LOOP_DELAY_MS, cancellationToken);
         }
 
         // Wait for all elevator tasks to complete
@@ -742,7 +750,7 @@ public class ElevatorSystem
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            // NEW: Use system-level target retrieval instead of elevator queue
+            // Use system-level target retrieval instead of elevator queue
             if (GetNextTargetForElevator(elevatorIndex, out int targetFloor))
             {
                 var startFloor = elevator.CurrentFloor;
@@ -788,7 +796,7 @@ public class ElevatorSystem
             {
                 // No targets, track idle time
                 var idleStart = System.Diagnostics.Stopwatch.StartNew();
-                await Task.Delay(100, cancellationToken);
+                await Task.Delay(IDLE_DELAY_MS, cancellationToken);
                 idleStart.Stop();
                 _performanceTracker.RecordElevatorIdleTime(elevatorLabel, idleStart.Elapsed);
             }
@@ -851,7 +859,7 @@ public class ElevatorSystem
     }
 
 
-    // NEW: System-level target management methods
+    // System-level target management methods
     public bool GetNextTargetForElevator(int elevatorIndex, out int targetFloor)
     {
         lock (_targetLock)
