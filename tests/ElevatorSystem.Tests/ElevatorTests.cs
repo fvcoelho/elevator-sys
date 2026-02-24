@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ElevatorSystem.Tests;
 
@@ -12,7 +13,7 @@ public class ElevatorTests
 
     private Elevator CreateTestElevator()
     {
-        return new Elevator(MIN_FLOOR, MAX_FLOOR, INITIAL_FLOOR, DOOR_OPEN_MS, FLOOR_TRAVEL_MS);
+        return new Elevator(MIN_FLOOR, MAX_FLOOR, INITIAL_FLOOR, DOOR_OPEN_MS, FLOOR_TRAVEL_MS, label: "TEST", logger: NullLogger.Instance);
     }
 
     [Fact]
