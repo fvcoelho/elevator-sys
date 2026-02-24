@@ -1,10 +1,10 @@
-# ElevatorPainel
+# ElevatorPanel
 
 A console application for submitting elevator requests to the multi-elevator system via a shared file.
 
 ## Overview
 
-ElevatorPainel allows you to submit elevator ride requests that are automatically picked up and processed by the main ElevatorSystem application. This enables:
+ElevatorPanel allows you to submit elevator ride requests that are automatically picked up and processed by the main ElevatorSystem application. This enables:
 - External request submission
 - Automated testing scenarios
 - Load testing
@@ -18,13 +18,13 @@ Run the application without arguments to enter interactive mode:
 
 ```bash
 cd /Users/fvcoelho/Working/elevator-sys
-dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj
+dotnet run --project src/ElevatorPanel/ElevatorPanel.csproj
 ```
 
 You'll see:
 
 ```
-=== ELEVATOR PAINEL REQUEST ===
+=== ELEVATOR PANEL REQUEST ===
 
 Enter elevator requests to send to the system.
 Requests are written to: /Users/fvcoelho/Working/elevator-sys/elevator_requests.txt
@@ -46,12 +46,12 @@ The request will be written to `elevator_requests.txt` and picked up by the elev
 Submit a single request directly:
 
 ```bash
-dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj -- <pickup> <destination>
+dotnet run --project src/ElevatorPanel/ElevatorPanel.csproj -- <pickup> <destination>
 ```
 
 Example:
 ```bash
-dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj -- 5 15
+dotnet run --project src/ElevatorPanel/ElevatorPanel.csproj -- 5 15
 # Output: ✓ Request added: 5 → 15
 ```
 
@@ -68,7 +68,7 @@ dotnet run --project src/ElevatorSystem/ElevatorSystem.csproj
 **Terminal 2 - Request Writer:**
 ```bash
 cd /Users/fvcoelho/Working/elevator-sys
-dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj
+dotnet run --project src/ElevatorPanel/ElevatorPanel.csproj
 ```
 
 Add requests in Terminal 2 and watch them being processed in Terminal 1!
@@ -112,7 +112,7 @@ Example file contents:
 ## Building
 
 ```bash
-dotnet build src/ElevatorPainel/ElevatorPainel.csproj
+dotnet build src/ElevatorPanel/ElevatorPanel.csproj
 ```
 
 ## Technical Details

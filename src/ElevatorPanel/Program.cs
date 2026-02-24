@@ -1,4 +1,4 @@
-namespace ElevatorPainel;
+namespace ElevatorPanel;
 
 class Program
 {
@@ -56,7 +56,7 @@ class Program
     static void ShowWelcome()
     {
         Console.Clear();
-        Console.WriteLine("=== ELEVATOR PAINEL REQUEST ===");
+        Console.WriteLine("=== ELEVATOR PANEL REQUEST ===");
         Console.WriteLine();
         Console.WriteLine("Enter elevator requests to send to the system.");
         Console.WriteLine($"Requests are written to: {Path.GetFullPath(REQUESTS_DIR)}");
