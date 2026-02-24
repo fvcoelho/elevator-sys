@@ -10,7 +10,7 @@ Open separate terminal windows for each component:
 # Terminal 1: ElevatorSystem (main application)
 dotnet run --project src/ElevatorSystem/ElevatorSystem.csproj
 
-# Terminal 2: ElevatorPainel (elevator panel request)
+# Terminal 2: ElevatorPainel (elevator painel request)
 dotnet run --project src/ElevatorPainel/ElevatorPainel.csproj
 
 # Terminal 3: Elevator A log monitor
@@ -65,7 +65,7 @@ kill <PID>
 ## Architecture
 
 - **ElevatorSystem**: Main elevator control system with dispatcher
-- **ElevatorPainel**: Elevator panel request
+- **ElevatorPainel**: Elevator painel request
 - **Logs**: Real-time elevator state and operation logs
 
 ## Performance
