@@ -12,6 +12,7 @@ internal class RequestProgress
     public bool PickupReached { get; set; }
     public bool DestinationReached { get; set; }
     public bool IsComplete => PickupReached && DestinationReached;
+    public Queue<int> PendingFloors { get; set; } = new();  // NEW: Track pending floors for this request
 }
 
 public class ElevatorSystem
@@ -22,6 +23,10 @@ public class ElevatorSystem
     private readonly int _minFloor;
     private readonly int _maxFloor;
     private readonly List<Task> _elevatorTasks = new();
+
+    // NEW: Single queue architecture - system-level target management
+    private readonly Dictionary<int, Queue<int>> _elevatorTargets = new();
+    private readonly object _targetLock = new();
 
     // Completion tracking
     private readonly ConcurrentDictionary<int, RequestProgress> _activeRequests = new();
@@ -73,6 +78,9 @@ public class ElevatorSystem
                 label: GetElevatorLabel(i));
 
             _elevators.Add(elevator);
+
+            // NEW: Initialize target queue for this elevator
+            _elevatorTargets[i] = new Queue<int>();
 
             // Initialize log file for this elevator
             var logFileName = $"elevator_{GetElevatorLabel(i)}.log";
@@ -154,7 +162,8 @@ public class ElevatorSystem
         for (int i = 0; i < _elevators.Count; i++)
         {
             var elevator = _elevators[i];
-            var targets = elevator.GetTargets();
+            // NEW: Use system-level targets instead of elevator queue
+            var targets = GetElevatorTargets(i);
             var targetStr = targets.Any() ? $"[{string.Join(", ", targets)}]" : "[]";
 
             status.AppendLine($"Elevator {GetElevatorLabel(i)}: Floor {elevator.CurrentFloor,-2} | {elevator.State,-12} | Targets: {targetStr}");
@@ -249,15 +258,23 @@ public class ElevatorSystem
             PickupReached = false,
             DestinationReached = false
         };
+
+        // NEW: Populate pending floors for this request
+        progress.PendingFloors.Enqueue(request.PickupFloor);
+        progress.PendingFloors.Enqueue(request.DestinationFloor);
+
         _activeRequests[request.RequestId] = progress;
 
         // Log request assignment
         LogElevatorEvent(elevatorIndex, $"Request #{request.RequestId} ASSIGNED: {request.PickupFloor} → {request.DestinationFloor} ({request.Direction})");
 
-        // Add pickup floor first, then destination floor
+        // Add pickup floor first, then destination floor to system-level target queue
         // This ensures the elevator goes to pickup the passenger before going to their destination
-        elevator.AddRequest(request.PickupFloor);
-        elevator.AddRequest(request.DestinationFloor);
+        lock (_targetLock)
+        {
+            _elevatorTargets[elevatorIndex].Enqueue(request.PickupFloor);
+            _elevatorTargets[elevatorIndex].Enqueue(request.DestinationFloor);
+        }
 
         Console.WriteLine($"[DISPATCH] {request} → Elevator {GetElevatorLabel(elevatorIndex)} (at floor {elevator.CurrentFloor}, {elevator.State})");
     }
@@ -306,7 +323,8 @@ public class ElevatorSystem
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            if (elevator.TryGetNextTarget(out int targetFloor))
+            // NEW: Use system-level target retrieval instead of elevator queue
+            if (GetNextTargetForElevator(elevatorIndex, out int targetFloor))
             {
                 LogElevatorEvent(elevatorIndex, $"Target floor: {targetFloor} | Current floor: {elevator.CurrentFloor}");
 
@@ -406,6 +424,35 @@ public class ElevatorSystem
                 var elevatorLabel = GetElevatorLabel(elevatorIndex);
                 logWriter.WriteLine($"[{timestamp}] [Elevator {elevatorLabel}] {message}");
             }
+        }
+    }
+
+    // NEW: System-level target management methods
+    public bool GetNextTargetForElevator(int elevatorIndex, out int targetFloor)
+    {
+        lock (_targetLock)
+        {
+            if (_elevatorTargets.TryGetValue(elevatorIndex, out var queue) &&
+                queue.Count > 0)
+            {
+                targetFloor = queue.Dequeue();
+                LogElevatorEvent(elevatorIndex, $"Dequeued target floor: {targetFloor}");
+                return true;
+            }
+            targetFloor = 0;
+            return false;
+        }
+    }
+
+    public IEnumerable<int> GetElevatorTargets(int elevatorIndex)
+    {
+        lock (_targetLock)
+        {
+            if (_elevatorTargets.TryGetValue(elevatorIndex, out var queue))
+            {
+                return queue.ToArray();
+            }
+            return Array.Empty<int>();
         }
     }
 

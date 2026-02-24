@@ -1,11 +1,8 @@
-using System.Collections.Concurrent;
-
 namespace ElevatorSystem;
 
 public class Elevator
 {
     private readonly object _lock = new();
-    private readonly ConcurrentQueue<int> _targetFloors = new();
     private int _currentFloor;
     private ElevatorState _state;
 
@@ -121,32 +118,5 @@ public class Elevator
         Console.WriteLine($"[ELEVATOR {Label}] Doors are CLOSED (IDLE) at floor {CurrentFloor}");
         State = ElevatorState.IDLE;
         await Task.CompletedTask;
-    }   
-
-    public void AddRequest(int floor)
-    {
-        if (floor < MinFloor || floor > MaxFloor)
-        {
-            throw new ArgumentException($"Floor must be between {MinFloor} and {MaxFloor}");
-        }
-
-        _targetFloors.Enqueue(floor);
-        var queue = GetTargets();
-        Console.WriteLine($"[ELEVATOR {Label}] Added floor {floor} → Queue: [{string.Join(", ", queue)}]");
-    }
-
-    public bool TryGetNextTarget(out int floor)
-    {
-        return _targetFloors.TryDequeue(out floor);
-    }
-
-    public bool HasTargets()
-    {
-        return !_targetFloors.IsEmpty;
-    }
-
-    public IEnumerable<int> GetTargets()
-    {
-        return _targetFloors.ToArray();
     }
 }

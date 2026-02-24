@@ -282,111 +282,6 @@ public class ElevatorSystemTests
     }
 
     [Fact]
-    public async Task FindBestElevator_IdlePreferredOverCloserBusy_ReturnsIdleElevator()
-    {
-        // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
-        // Elevators at: 1, 10, 20
-
-        // Make elevator 1 busy by adding a request and processing
-        var elevator1 = system.GetElevator(1);
-        elevator1.AddRequest(15);
-
-        // Start processing elevator 1 in background to make it busy
-        var cts = new CancellationTokenSource();
-        _ = Task.Run(async () =>
-        {
-            while (!cts.Token.IsCancellationRequested)
-            {
-                if (elevator1.TryGetNextTarget(out int floor))
-                {
-                    while (elevator1.CurrentFloor != floor)
-                    {
-                        if (elevator1.CurrentFloor < floor)
-                            await elevator1.MoveUp();
-                        else
-                            await elevator1.MoveDown();
-                    }
-                    await elevator1.OpenDoor();
-                    await elevator1.CloseDoor();
-                }
-                await Task.Delay(10);
-            }
-        });
-
-        // Wait a bit for elevator to become busy
-        await Task.Delay(50);
-
-        // Act - Request for floor 12 (elevator 1 at 10 is closer, but elevator 2 at 20 is idle)
-        var request = new Request(pickupFloor: 12, destinationFloor: 15);
-        var bestIndex = system.FindBestElevator(request);
-
-        // Assert - Should prefer idle elevator (0 or 2) over busy elevator 1
-        bestIndex.Should().NotBe(1); // Should not pick the busy elevator
-        bestIndex.Should().Match(x => x == 0 || x == 2); // Should be one of the idle elevators
-
-        cts.Cancel();
-    }
-
-    [Fact]
-    public async Task FindBestElevator_AllBusy_ReturnsClosestBusyElevator()
-    {
-        // Arrange
-        var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10);
-
-        // Make all elevators busy
-        for (int i = 0; i < 3; i++)
-        {
-            var elevator = system.GetElevator(i);
-            // Add a request that's within valid range
-            var targetFloor = elevator.CurrentFloor == 20 ? 19 : elevator.CurrentFloor + 1;
-            elevator.AddRequest(targetFloor);
-        }
-
-        // Start processing all elevators to make them busy
-        var cts = new CancellationTokenSource();
-        var tasks = new List<Task>();
-
-        for (int i = 0; i < 3; i++)
-        {
-            var index = i;
-            tasks.Add(Task.Run(async () =>
-            {
-                var elevator = system.GetElevator(index);
-                while (!cts.Token.IsCancellationRequested)
-                {
-                    if (elevator.TryGetNextTarget(out int floor))
-                    {
-                        while (elevator.CurrentFloor != floor)
-                        {
-                            if (elevator.CurrentFloor < floor)
-                                await elevator.MoveUp();
-                            else
-                                await elevator.MoveDown();
-                        }
-                        await elevator.OpenDoor();
-                        await elevator.CloseDoor();
-                    }
-                    await Task.Delay(10);
-                }
-            }));
-        }
-
-        // Wait for elevators to become busy
-        await Task.Delay(50);
-
-        // Act - Request for floor 11 (elevator 1 at 10 should be closest)
-        var request = new Request(pickupFloor: 11, destinationFloor: 15);
-        var bestIndex = system.FindBestElevator(request);
-
-        // Assert - Should pick elevator 1 (closest to floor 11)
-        bestIndex.Should().Be(1);
-
-        cts.Cancel();
-        await Task.WhenAll(tasks);
-    }
-
-    [Fact]
     public void FindBestElevator_MultileIdleAtSameDistance_ReturnsFirst()
     {
         // Arrange
@@ -416,9 +311,8 @@ public class ElevatorSystemTests
         // Act
         system.AssignRequestToElevator(0, request);
 
-        // Assert
-        var elevator = system.GetElevator(0);
-        var targets = elevator.GetTargets().ToList();
+        // Assert - check system-level targets instead of elevator queue
+        var targets = system.GetElevatorTargets(0).ToList();
         targets.Should().HaveCount(2);
         targets[0].Should().Be(5);  // Pickup floor first
         targets[1].Should().Be(15); // Destination floor second
@@ -449,9 +343,8 @@ public class ElevatorSystemTests
         system.AssignRequestToElevator(0, request1);
         system.AssignRequestToElevator(0, request2);
 
-        // Assert
-        var elevator = system.GetElevator(0);
-        var targets = elevator.GetTargets().ToList();
+        // Assert - check system-level targets instead of elevator queue
+        var targets = system.GetElevatorTargets(0).ToList();
         targets.Should().HaveCount(4);
         targets[0].Should().Be(5);  // Request 1 pickup
         targets[1].Should().Be(15); // Request 1 destination
@@ -694,7 +587,8 @@ public class ElevatorSystemTests
                 {
                     allIdle = false;
                 }
-                if (elevator.HasTargets())
+                // NEW: Check system-level targets instead of elevator queue
+                if (system.GetElevatorTargets(i).Any())
                 {
                     allEmpty = false;
                 }

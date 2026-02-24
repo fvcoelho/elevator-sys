@@ -80,38 +80,6 @@ public class ElevatorTests
     }
 
     [Fact]
-    public void AddRequest_ValidFloor_EnqueuesTarget()
-    {
-        // Arrange
-        var elevator = CreateTestElevator();
-        const int targetFloor = 7;
-
-        // Act
-        elevator.AddRequest(targetFloor);
-
-        // Assert
-        elevator.HasTargets().Should().BeTrue();
-        elevator.TryGetNextTarget(out int floor).Should().BeTrue();
-        floor.Should().Be(targetFloor);
-    }
-
-    [Fact]
-    public void AddRequest_InvalidFloor_ThrowsException()
-    {
-        // Arrange
-        var elevator = CreateTestElevator();
-
-        // Act & Assert
-        var actTooLow = () => elevator.AddRequest(0);
-        actTooLow.Should().Throw<ArgumentException>()
-            .WithMessage($"Floor must be between {MIN_FLOOR} and {MAX_FLOOR}*");
-
-        var actTooHigh = () => elevator.AddRequest(11);
-        actTooHigh.Should().Throw<ArgumentException>()
-            .WithMessage($"Floor must be between {MIN_FLOOR} and {MAX_FLOOR}*");
-    }
-
-    [Fact]
     public async Task OpenDoor_SetsState()
     {
         // Arrange
@@ -138,29 +106,6 @@ public class ElevatorTests
 
         // Assert
         elevator.State.Should().Be(ElevatorState.IDLE);
-    }
-
-    [Fact]
-    public void TryGetNextTarget_FIFO_Order()
-    {
-        // Arrange
-        var elevator = CreateTestElevator();
-        var floors = new[] { 7, 3, 9, 2, 8 };
-
-        // Act
-        foreach (var floor in floors)
-        {
-            elevator.AddRequest(floor);
-        }
-
-        // Assert - Should dequeue in same order
-        for (int i = 0; i < floors.Length; i++)
-        {
-            elevator.TryGetNextTarget(out int floor).Should().BeTrue();
-            floor.Should().Be(floors[i], $"floor at position {i} should match FIFO order");
-        }
-
-        elevator.HasTargets().Should().BeFalse();
     }
 
     [Fact]
