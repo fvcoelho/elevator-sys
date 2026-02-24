@@ -68,8 +68,7 @@ var fileMonitorTask = Task.Run(async () =>
                 try
                 {
                     // Parse filename:
-                    // Old format: "20260223_214530_from_5_to_15.txt" (6 parts)
-                    // New format: "20260223_214530_123_from_5_to_15.txt" (7 parts with milliseconds)
+                    // Format: "20260223_214530_123_from_5_to_15.txt" (7 parts with milliseconds)
                     var nameWithoutExt = filename.Replace(".txt", "");
                     var parts = nameWithoutExt.Split('_');
 
@@ -77,15 +76,9 @@ var fileMonitorTask = Task.Run(async () =>
                     int pickup = 0, destination = 0;
                     bool validFormat = false;
 
-                    if (parts.Length == 6 && parts[2] == "from" && parts[4] == "to")
+                    if (parts.Length == 7 && parts[3] == "from" && parts[5] == "to")
                     {
-                        // Old format without milliseconds
-                        validFormat = int.TryParse(parts[3], out pickup) &&
-                                     int.TryParse(parts[5], out destination);
-                    }
-                    else if (parts.Length == 7 && parts[3] == "from" && parts[5] == "to")
-                    {
-                        // New format with milliseconds
+                        // Format with milliseconds
                         validFormat = int.TryParse(parts[4], out pickup) &&
                                      int.TryParse(parts[6], out destination);
                     }
@@ -104,14 +97,7 @@ var fileMonitorTask = Task.Run(async () =>
                         File.Move(filepath, processedPath);
 
                         Console.WriteLine($"[FILE] Processed and archived: {filename} (Request #{request.RequestId})");
-                    }
-                    else if (parts.Length >= 6 &&
-                            ((parts.Length == 6 && (parts[2] != "from" || parts[4] != "to")) ||
-                             (parts.Length == 7 && (parts[3] != "from" || parts[5] != "to"))))
-                    {
-                        Console.WriteLine($"[FILE] Invalid floor numbers in filename: {filename}");
-                        processedFiles.Add(filename); // Skip this file in future iterations
-                    }
+                    }                    
                     else
                     {
                         Console.WriteLine($"[FILE] Invalid filename format: {filename}");
