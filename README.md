@@ -15,13 +15,18 @@ A .NET 8 console application simulating a multi-elevator system with 3-5 configu
 - **Thread-Safe**: `ConcurrentQueue` for lock-free request handling, locks for state management
 - **134 unit and integration tests**
 
-## Prerequisites
+## Getting Started
 
+### Prerequisites
+
+- Git
 - .NET 8 SDK or higher
 
-## Build & Test
+### Clone & Build
 
 ```bash
+git clone git@github.com:fvcoelho/elevator-sys.git
+cd elevator-sys
 dotnet build
 dotnet test
 ```
@@ -53,6 +58,7 @@ Arrange terminals so logs are visible alongside the applications.
 | **S** | View system status |
 | **A** | View analytics (performance metrics) |
 | **D** | Change dispatch algorithm (Simple/SCAN/LOOK) |
+| **M** | Toggle elevator maintenance mode |
 | **Q** | Quit |
 
 ### Troubleshooting
