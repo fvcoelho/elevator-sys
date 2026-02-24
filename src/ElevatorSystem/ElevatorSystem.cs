@@ -403,7 +403,8 @@ public class ElevatorSystem
             if (_elevatorLogs.TryGetValue(elevatorIndex, out var logWriter))
             {
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-                logWriter.WriteLine($"[{timestamp}] {message}");
+                var elevatorLabel = GetElevatorLabel(elevatorIndex);
+                logWriter.WriteLine($"[{timestamp}] [Elevator {elevatorLabel}] {message}");
             }
         }
     }
