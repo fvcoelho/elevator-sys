@@ -91,3 +91,7 @@ orleans.codegen.cs
 
 # macOS
 .DS_Store
+
+# Elevator system runtime directories
+requests/
+processed/

@@ -67,34 +67,50 @@ var fileMonitorTask = Task.Run(async () =>
 
                 try
                 {
-                    // Parse filename: "20260223_214530_from_5_to_15.txt"
-                    // Pattern: {timestamp}_from_{pickup}_to_{destination}.txt
+                    // Parse filename:
+                    // Old format: "20260223_214530_from_5_to_15.txt" (6 parts)
+                    // New format: "20260223_214530_123_from_5_to_15.txt" (7 parts with milliseconds)
                     var nameWithoutExt = filename.Replace(".txt", "");
                     var parts = nameWithoutExt.Split('_');
 
-                    if (parts.Length >= 6 && parts[2] == "from" && parts[4] == "to")
+                    // Determine format and extract pickup/destination
+                    int pickup = 0, destination = 0;
+                    bool validFormat = false;
+
+                    if (parts.Length == 6 && parts[2] == "from" && parts[4] == "to")
                     {
-                        if (int.TryParse(parts[3], out int pickup) &&
-                            int.TryParse(parts[5], out int destination))
-                        {
-                            // Create request
-                            var request = new Request(pickup, destination, MIN_FLOOR, MAX_FLOOR);
-                            system.AddRequest(request);
+                        // Old format without milliseconds
+                        validFormat = int.TryParse(parts[3], out pickup) &&
+                                     int.TryParse(parts[5], out destination);
+                    }
+                    else if (parts.Length == 7 && parts[3] == "from" && parts[5] == "to")
+                    {
+                        // New format with milliseconds
+                        validFormat = int.TryParse(parts[4], out pickup) &&
+                                     int.TryParse(parts[6], out destination);
+                    }
 
-                            // Mark as processed
-                            processedFiles.Add(filename);
+                    if (validFormat)
+                    {
+                        // Create request
+                        var request = new Request(pickup, destination, MIN_FLOOR, MAX_FLOOR);
+                        system.AddRequest(request);
 
-                            // Move file to processed/ directory
-                            var processedPath = Path.Combine(PROCESSED_DIR, filename);
-                            File.Move(filepath, processedPath);
+                        // Mark as processed
+                        processedFiles.Add(filename);
 
-                            Console.WriteLine($"[FILE] Processed and archived: {filename} (Request #{request.RequestId})");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[FILE] Invalid floor numbers in filename: {filename}");
-                            processedFiles.Add(filename); // Skip this file in future iterations
-                        }
+                        // Move file to processed/ directory
+                        var processedPath = Path.Combine(PROCESSED_DIR, filename);
+                        File.Move(filepath, processedPath);
+
+                        Console.WriteLine($"[FILE] Processed and archived: {filename} (Request #{request.RequestId})");
+                    }
+                    else if (parts.Length >= 6 &&
+                            ((parts.Length == 6 && (parts[2] != "from" || parts[4] != "to")) ||
+                             (parts.Length == 7 && (parts[3] != "from" || parts[5] != "to"))))
+                    {
+                        Console.WriteLine($"[FILE] Invalid floor numbers in filename: {filename}");
+                        processedFiles.Add(filename); // Skip this file in future iterations
                     }
                     else
                     {
