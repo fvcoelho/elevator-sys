@@ -10,6 +10,8 @@ public class Elevator
     private readonly ILogger? _logger;
     private bool _inMaintenance;
     private readonly object _maintenanceLock = new();
+    private bool _emergencyStop;
+    private readonly object _emergencyStopLock = new();
 
     public int MinFloor { get; }
     public int MaxFloor { get; }
@@ -24,6 +26,11 @@ public class Elevator
     public bool InMaintenance
     {
         get { lock (_maintenanceLock) { return _inMaintenance; } }
+    }
+
+    public bool InEmergencyStop
+    {
+        get { lock (_emergencyStopLock) { return _emergencyStop; } }
     }
 
     public int CurrentFloor
@@ -164,12 +171,26 @@ public class Elevator
 
     public async Task CloseDoor()
     {
-        State = ElevatorState.DOOR_CLOSING;
-        _logger?.LogInformation("State: DOOR_CLOSING | Floor: {Floor}", CurrentFloor);
-        await Task.Delay(DoorTransitionMs);
+        if (_emergencyStop)
+        {
+            _logger?.LogWarning("Cannot close doors while in EMERGENCY STOP");
+            return;
+        }
+        else
+        {
+            State = ElevatorState.DOOR_CLOSING;
+            _logger?.LogInformation("State: DOOR_CLOSING | Floor: {Floor}", CurrentFloor);
+            await Task.Delay(DoorTransitionMs);
+        }
 
         State = ElevatorState.IDLE;
         _logger?.LogInformation("State: IDLE | Arrived at floor {Floor}", CurrentFloor);
+
+        if (_emergencyStop)
+        {
+            State = ElevatorState.DOOR_OPEN;
+            _logger?.LogWarning("Elevator {Label} is in EMERGENCY STOP, keeping doors open", Label);
+        }
     }
 
     public void EnterMaintenance()
@@ -189,6 +210,26 @@ public class Elevator
             _inMaintenance = false;
             State = ElevatorState.IDLE;
             _logger?.LogInformation("Elevator {Label} exiting MAINTENANCE mode", Label);
+        }
+    }
+
+    public void EmergencyStop()
+    {
+        lock (_emergencyStopLock)
+        {
+            _emergencyStop = true;
+            State = ElevatorState.EMERGENCY_STOP;
+            _logger?.LogWarning("Elevator {Label} EMERGENCY STOP activated", Label);
+        }
+    }
+
+    public void ResumeFromEmergencyStop()
+    {
+        lock (_emergencyStopLock)
+        {
+            _emergencyStop = false;
+            State = ElevatorState.IDLE;
+            _logger?.LogInformation("Elevator {Label} resumed from EMERGENCY STOP", Label);
         }
     }
 }

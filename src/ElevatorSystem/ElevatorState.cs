@@ -8,5 +8,6 @@ public enum ElevatorState
     DOOR_OPENING,
     DOOR_OPEN,
     DOOR_CLOSING,
-    MAINTENANCE
+    MAINTENANCE,
+    EMERGENCY_STOP //DOOR_OPEN
 }

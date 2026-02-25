@@ -8,12 +8,17 @@ const int FLOOR_TRAVEL_MS = 1500;    // 1.5 seconds per floor
 const string REQUESTS_DIR = "requests";   // Directory for pending requests
 const string PROCESSED_DIR = "processed"; // Directory for processed requests
 
+// ── VIP Floors ──
+// Add or remove floor numbers to control VIP access.
+// Standard users will be denied access to these floors.
+int[] VIP_FLOORS = { 13 };
+
 // ── System Profile ──
 // Change this single value to switch configurations:
 //   Standard  → [Local, Local, Local]             3 elevators, all floors
 //   Mixed     → [Local, Local, Express]           2 local + 1 express (lobby + floors 15-20)
 //   Full      → [Local, Local, Express, Freight]  2 local + 1 express + 1 freight (capacity 20)
-const string PROFILE = "Mixed";
+const string PROFILE = "Full";
 
 ElevatorConfig[] configs = PROFILE switch
 {
@@ -48,6 +53,13 @@ var system = new ElevatorSystem.ElevatorSystem(
     floorTravelMs: FLOOR_TRAVEL_MS,
     doorTransitionMs: 1000,
     elevatorConfigs: configs);
+
+// Apply VIP floor restrictions
+foreach (var floor in VIP_FLOORS)
+{
+    system.SetFloorRestriction(floor, FloorRestriction.VIPOnly(floor));
+    Console.WriteLine($"[CONFIG] Floor {floor} set as VIP-only");
+}
 
 // Create directories if they don't exist
 if (!Directory.Exists(REQUESTS_DIR))
@@ -101,13 +113,15 @@ var fileMonitorTask = Task.Run(async () =>
                 {
                     // Parse filename:
                     // Format: "20260223_214530_123_from_5_to_15.txt" (7 parts with milliseconds)
-                    // Or: "20260223_214530_123_from_5_to_15_H.txt" (8 parts with priority)
+                    // Or: "20260223_214530_123_from_5_to_15_H.txt" (8 parts with priority/VIP)
                     var nameWithoutExt = filename.Replace(".txt", "");
                     var parts = nameWithoutExt.Split('_');
 
                     // Determine format and extract pickup/destination/priority
                     int pickup = 0, destination = 0;
                     RequestPriority priority = RequestPriority.Normal;
+                    AccessLevel accessLevel = AccessLevel.Standard;
+                    ElevatorType? preferredType = null;
                     bool validFormat = false;
 
                     if (parts.Length == 7 && parts[3] == "from" && parts[5] == "to")
@@ -118,26 +132,32 @@ var fileMonitorTask = Task.Run(async () =>
                     }
                     else if (parts.Length == 8 && parts[3] == "from" && parts[5] == "to")
                     {
-                        // Format with milliseconds and priority
+                        // Format with milliseconds and priority/VIP flag
                         validFormat = int.TryParse(parts[4], out pickup) &&
                                      int.TryParse(parts[6], out destination);
 
                         if (validFormat)
                         {
-                            // Parse priority from last part
-                            priority = parts[7].ToUpper() switch
+                            switch (parts[7].ToUpper())
                             {
-                                "H" or "HIGH" => RequestPriority.High,
-                                "N" or "NORMAL" => RequestPriority.Normal,
-                                _ => RequestPriority.Normal
-                            };
+                                case "H" or "HIGH":
+                                    priority = RequestPriority.High;
+                                    break;
+                                case "V" or "VIP":
+                                    accessLevel = AccessLevel.VIP;
+                                    // VIP auto-elevates to High priority via Request constructor
+                                    break;
+                                case "F" or "FREIGHT":
+                                    preferredType = ElevatorType.Freight;
+                                    break;
+                            }
                         }
                     }
 
                     if (validFormat)
                     {
-                        // Create request
-                        var request = new Request(pickup, destination, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR);
+                        // Create request with access level and preferred elevator type
+                        var request = new Request(pickup, destination, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR, accessLevel: accessLevel, preferredElevatorType: preferredType);
                         system.AddRequest(request);
 
                         // Mark as processed
@@ -155,10 +175,17 @@ var fileMonitorTask = Task.Run(async () =>
                         processedFiles.Add(filename); // Skip this file in future iterations
                     }
                 }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.WriteLine($"[FILE] Access denied for {filename}: {ex.Message}");
+                    processedFiles.Add(filename);
+                    File.Move(filepath, Path.Combine(PROCESSED_DIR, filename));
+                }
                 catch (ArgumentException ex)
                 {
                     Console.WriteLine($"[FILE] Invalid request in {filename}: {ex.Message}");
-                    processedFiles.Add(filename); // Skip this file in future iterations
+                    processedFiles.Add(filename);
+                    File.Move(filepath, Path.Combine(PROCESSED_DIR, filename));
                 }
                 catch (IOException ex)
                 {
@@ -178,7 +205,7 @@ var fileMonitorTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine($"=== ELEVATOR SYSTEM ({PROFILE}: {configs.Length} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
-Console.WriteLine("Press [R] REQUEST | [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [M] MAINTENANCE | [Q] QUIT");
+Console.WriteLine("Press [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [M] MAINTENANCE | [SPACE] EMERGENCY STOP | [Q] QUIT");
 Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
 Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}");
 Console.WriteLine($"Current Algorithm: {system.Algorithm}\n");
@@ -193,55 +220,6 @@ while (true)
 
     switch (keyChar)
     {
-        case 'R':
-            // Request a ride
-            Console.WriteLine("\n=== NEW RIDE REQUEST ===");
-
-            // Get pickup floor
-            Console.Write($"Pickup floor ({MIN_FLOOR}-{MAX_FLOOR}): ");
-            var pickupInput = Console.ReadLine();
-            if (!int.TryParse(pickupInput, out int pickupFloor))
-            {
-                Console.WriteLine("Invalid input. Please enter a number.\n");
-                break;
-            }
-
-            // Get destination floor
-            Console.Write($"Destination floor ({MIN_FLOOR}-{MAX_FLOOR}): ");
-            var destInput = Console.ReadLine();
-            if (!int.TryParse(destInput, out int destinationFloor))
-            {
-                Console.WriteLine("Invalid input. Please enter a number.\n");
-                break;
-            }
-
-            // Get priority
-            Console.Write("Priority [N]ormal / [H]igh (default: Normal): ");
-            var priorityInput = Console.ReadLine()?.Trim().ToUpper();
-
-            RequestPriority priority = priorityInput switch
-            {
-                "H" => RequestPriority.High,
-                _ => RequestPriority.Normal
-            };
-
-            // Create and add request
-            try
-            {
-                var request = new Request(pickupFloor, destinationFloor, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR);
-                system.AddRequest(request);
-                Console.WriteLine();
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}\n");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                Console.WriteLine($"Access Denied: {ex.Message}\n");
-            }
-            break;
-
         case 'S':
             // Display status
             Console.WriteLine();
@@ -324,6 +302,20 @@ while (true)
             }
             break;
 
+        case ' ':
+            // Emergency stop toggle
+            if (system.IsEmergencyStopped)
+            {
+                system.ResumeAll();
+                Console.WriteLine("\n*** EMERGENCY STOP RELEASED ***\n");
+            }
+            else
+            {
+                system.EmergencyStopAll();
+                Console.WriteLine("\n*** EMERGENCY STOP ACTIVATED ***\n");
+            }
+            break;
+
         case 'Q':
             // Quit
             Console.WriteLine("\n\nShutting down elevator system...");
@@ -340,7 +332,7 @@ while (true)
             return;
 
         default:
-            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [D] Dispatch | [M] Maintenance | [Q] Quit\n");
+            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [D] Dispatch | [M] Maintenance | [SPACE] Emergency Stop | [Q] Quit\n");
             break;
     }
 
