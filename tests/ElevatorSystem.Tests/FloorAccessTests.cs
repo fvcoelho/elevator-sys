@@ -314,4 +314,184 @@ public class FloorAccessTests
         str.Should().Contain("[VIP]");
         str.Should().Contain("[High]"); // VIP gets High priority
     }
+
+    // ── Floor 13 VIP Configuration Tests ──
+
+    [Fact]
+    public void Floor13VIP_StandardUser_DeniedAccess()
+    {
+        // Arrange - simulate the VIP_FLOORS = { 13 } configuration
+        var system = new ElevatorSystem(
+            elevatorCount: 3,
+            minFloor: 1,
+            maxFloor: 20,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            doorTransitionMs: 10);
+
+        system.SetFloorRestriction(13, FloorRestriction.VIPOnly(13));
+
+        // Act - Standard user tries to go to floor 13
+        var request = new Request(1, 13, accessLevel: AccessLevel.Standard);
+        var act = () => system.AddRequest(request);
+
+        // Assert
+        act.Should().Throw<UnauthorizedAccessException>()
+            .WithMessage("*Access denied to destination floor 13*");
+    }
+
+    [Fact]
+    public void Floor13VIP_VIPUser_Allowed()
+    {
+        // Arrange
+        var system = new ElevatorSystem(
+            elevatorCount: 3,
+            minFloor: 1,
+            maxFloor: 20,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            doorTransitionMs: 10);
+
+        system.SetFloorRestriction(13, FloorRestriction.VIPOnly(13));
+
+        // Act - VIP user goes to floor 13
+        var request = new Request(1, 13, accessLevel: AccessLevel.VIP);
+        var act = () => system.AddRequest(request);
+
+        // Assert
+        act.Should().NotThrow();
+        system.PendingRequestCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void Floor13VIP_VIPRequest_GetsHighPriority()
+    {
+        // Arrange
+        var system = new ElevatorSystem(
+            elevatorCount: 3,
+            minFloor: 1,
+            maxFloor: 20,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            doorTransitionMs: 10);
+
+        system.SetFloorRestriction(13, FloorRestriction.VIPOnly(13));
+
+        // Act
+        var request = new Request(1, 13, accessLevel: AccessLevel.VIP);
+        system.AddRequest(request);
+
+        // Assert - VIP auto-elevates to High priority
+        request.Priority.Should().Be(RequestPriority.High);
+        request.AccessLevel.IsVIP.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Floor13VIP_StandardUser_PickupFromFloor13Denied()
+    {
+        // Arrange
+        var system = new ElevatorSystem(
+            elevatorCount: 3,
+            minFloor: 1,
+            maxFloor: 20,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            doorTransitionMs: 10);
+
+        system.SetFloorRestriction(13, FloorRestriction.VIPOnly(13));
+
+        // Act - Standard user tries to pickup from VIP floor 13
+        var request = new Request(13, 1, accessLevel: AccessLevel.Standard);
+        var act = () => system.AddRequest(request);
+
+        // Assert
+        act.Should().Throw<UnauthorizedAccessException>()
+            .WithMessage("*Access denied to pickup floor 13*");
+    }
+
+    [Fact]
+    public void Floor13VIP_StandardUser_OtherFloorsStillAccessible()
+    {
+        // Arrange
+        var system = new ElevatorSystem(
+            elevatorCount: 3,
+            minFloor: 1,
+            maxFloor: 20,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            doorTransitionMs: 10);
+
+        system.SetFloorRestriction(13, FloorRestriction.VIPOnly(13));
+
+        // Act - Standard user requests non-VIP floors
+        var request1 = new Request(1, 12, accessLevel: AccessLevel.Standard);
+        var request2 = new Request(14, 20, accessLevel: AccessLevel.Standard);
+        var act1 = () => system.AddRequest(request1);
+        var act2 = () => system.AddRequest(request2);
+
+        // Assert - floors around 13 remain accessible
+        act1.Should().NotThrow();
+        act2.Should().NotThrow();
+        system.PendingRequestCount.Should().Be(2);
+    }
+
+    [Fact]
+    public void VIPFloorsArray_MultipleFloorsConfigured()
+    {
+        // Arrange - simulate VIP_FLOORS = { 13, 18, 20 }
+        var system = new ElevatorSystem(
+            elevatorCount: 3,
+            minFloor: 1,
+            maxFloor: 20,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            doorTransitionMs: 10);
+
+        int[] vipFloors = { 13, 18, 20 };
+        foreach (var floor in vipFloors)
+        {
+            system.SetFloorRestriction(floor, FloorRestriction.VIPOnly(floor));
+        }
+
+        // Act & Assert - Standard denied on all VIP floors
+        foreach (var floor in vipFloors)
+        {
+            var request = new Request(1, floor, accessLevel: AccessLevel.Standard);
+            var act = () => system.AddRequest(request);
+            act.Should().Throw<UnauthorizedAccessException>(
+                $"Standard user should be denied access to VIP floor {floor}");
+        }
+
+        // Act & Assert - VIP allowed on all VIP floors
+        foreach (var floor in vipFloors)
+        {
+            var request = new Request(1, floor, accessLevel: AccessLevel.VIP);
+            var act = () => system.AddRequest(request);
+            act.Should().NotThrow(
+                $"VIP user should be allowed access to VIP floor {floor}");
+        }
+    }
+
+    [Fact]
+    public void Floor13VIP_DispatchAssignsClosestElevator()
+    {
+        // Arrange
+        var system = new ElevatorSystem(
+            elevatorCount: 3,
+            minFloor: 1,
+            maxFloor: 20,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            doorTransitionMs: 10);
+
+        system.SetFloorRestriction(13, FloorRestriction.VIPOnly(13));
+
+        // Act - VIP request to floor 13 (High priority = closest elevator)
+        var request = new Request(1, 13, accessLevel: AccessLevel.VIP);
+        var bestElevator = system.FindBestElevator(request);
+
+        // Assert - an elevator is assigned (High priority picks absolute closest)
+        bestElevator.Should().NotBeNull();
+        request.Priority.Should().Be(RequestPriority.High);
+    }
 }

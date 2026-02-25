@@ -8,6 +8,11 @@ const int FLOOR_TRAVEL_MS = 1500;    // 1.5 seconds per floor
 const string REQUESTS_DIR = "requests";   // Directory for pending requests
 const string PROCESSED_DIR = "processed"; // Directory for processed requests
 
+// ── VIP Floors ──
+// Add or remove floor numbers to control VIP access.
+// Standard users will be denied access to these floors.
+int[] VIP_FLOORS = { 13 };
+
 // ── System Profile ──
 // Change this single value to switch configurations:
 //   Standard  → [Local, Local, Local]             3 elevators, all floors
@@ -48,6 +53,13 @@ var system = new ElevatorSystem.ElevatorSystem(
     floorTravelMs: FLOOR_TRAVEL_MS,
     doorTransitionMs: 1000,
     elevatorConfigs: configs);
+
+// Apply VIP floor restrictions
+foreach (var floor in VIP_FLOORS)
+{
+    system.SetFloorRestriction(floor, FloorRestriction.VIPOnly(floor));
+    Console.WriteLine($"[CONFIG] Floor {floor} set as VIP-only");
+}
 
 // Create directories if they don't exist
 if (!Directory.Exists(REQUESTS_DIR))
@@ -101,13 +113,14 @@ var fileMonitorTask = Task.Run(async () =>
                 {
                     // Parse filename:
                     // Format: "20260223_214530_123_from_5_to_15.txt" (7 parts with milliseconds)
-                    // Or: "20260223_214530_123_from_5_to_15_H.txt" (8 parts with priority)
+                    // Or: "20260223_214530_123_from_5_to_15_H.txt" (8 parts with priority/VIP)
                     var nameWithoutExt = filename.Replace(".txt", "");
                     var parts = nameWithoutExt.Split('_');
 
                     // Determine format and extract pickup/destination/priority
                     int pickup = 0, destination = 0;
                     RequestPriority priority = RequestPriority.Normal;
+                    AccessLevel accessLevel = AccessLevel.Standard;
                     bool validFormat = false;
 
                     if (parts.Length == 7 && parts[3] == "from" && parts[5] == "to")
@@ -118,26 +131,29 @@ var fileMonitorTask = Task.Run(async () =>
                     }
                     else if (parts.Length == 8 && parts[3] == "from" && parts[5] == "to")
                     {
-                        // Format with milliseconds and priority
+                        // Format with milliseconds and priority/VIP flag
                         validFormat = int.TryParse(parts[4], out pickup) &&
                                      int.TryParse(parts[6], out destination);
 
                         if (validFormat)
                         {
-                            // Parse priority from last part
-                            priority = parts[7].ToUpper() switch
+                            switch (parts[7].ToUpper())
                             {
-                                "H" or "HIGH" => RequestPriority.High,
-                                "N" or "NORMAL" => RequestPriority.Normal,
-                                _ => RequestPriority.Normal
-                            };
+                                case "H" or "HIGH":
+                                    priority = RequestPriority.High;
+                                    break;
+                                case "V" or "VIP":
+                                    accessLevel = AccessLevel.VIP;
+                                    // VIP auto-elevates to High priority via Request constructor
+                                    break;
+                            }
                         }
                     }
 
                     if (validFormat)
                     {
-                        // Create request
-                        var request = new Request(pickup, destination, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR);
+                        // Create request with access level
+                        var request = new Request(pickup, destination, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR, accessLevel: accessLevel);
                         system.AddRequest(request);
 
                         // Mark as processed

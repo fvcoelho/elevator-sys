@@ -125,17 +125,22 @@ class Program
             return;
         }
 
-        // Get priority
-        Console.Write("High priority? [y/N]: ");
+        // Get priority / VIP
+        Console.Write("Priority [N]ormal / [H]igh / [V]IP (default: Normal): ");
         var priorityInput = Console.ReadLine()?.Trim().ToUpper();
-        bool highPriority = priorityInput == "Y" || priorityInput == "YES";
+        string priorityFlag = priorityInput switch
+        {
+            "H" or "HIGH" => "H",
+            "V" or "VIP" => "V",
+            _ => ""
+        };
 
         // Write to file
-        var filename = WriteRequest(pickup.Value, destination.Value, highPriority);
+        var filename = WriteRequest(pickup.Value, destination.Value, priorityFlag);
         if (filename != null)
         {
             Console.WriteLine();
-            var priorityLabel = highPriority ? " [HIGH]" : "";
+            var priorityLabel = priorityFlag switch { "H" => " [HIGH]", "V" => " [VIP]", _ => "" };
             Console.WriteLine($"✓ Request added: {pickup.Value} → {destination.Value}{priorityLabel}");
             Console.WriteLine($"  Created file: {filename}");
             Console.WriteLine();
@@ -185,15 +190,15 @@ class Program
         return floor >= MIN_FLOOR && floor <= MAX_FLOOR;
     }
 
-    static string? WriteRequest(int pickup, int destination, bool highPriority = false)
+    static string? WriteRequest(int pickup, int destination, string priorityFlag = "")
     {
         try
         {
             // Generate timestamp with milliseconds to prevent collisions
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
 
-            // Create filename (append _H for high priority)
-            var prioritySuffix = highPriority ? "_H" : "";
+            // Create filename (append _H for high priority, _V for VIP)
+            var prioritySuffix = string.IsNullOrEmpty(priorityFlag) ? "" : $"_{priorityFlag}";
             var filename = $"{timestamp}_from_{pickup}_to_{destination}{prioritySuffix}.txt";
             var filepath = Path.Combine(REQUESTS_DIR, filename);
 
