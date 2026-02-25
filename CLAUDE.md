@@ -24,6 +24,10 @@ dotnet run --project src/ElevatorSystem
 
 # Build in Release mode
 dotnet build --configuration Release
+
+# Shows memory
+top -l 1 -s 0 | grep -i ElevatorSystem
+top -pid $(pgrep -f ElevatorSystem)
 ```
 
 ## Architecture

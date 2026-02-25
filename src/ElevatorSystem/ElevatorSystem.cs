@@ -61,6 +61,7 @@ public class ElevatorSystem
     public int ElevatorCount => _elevators.Count;
     public int PendingRequestCount => _requests.Count;
     public DispatchAlgorithm Algorithm { get; set; } = DispatchAlgorithm.Simple;
+    public bool IsEmergencyStopped => _elevators.Any(e => e.InEmergencyStop);
 
     public ElevatorSystem(int elevatorCount, int minFloor, int maxFloor, int doorOpenMs = 3000, int floorTravelMs = 1500, int doorTransitionMs = 1000)
         : this(minFloor, maxFloor, doorOpenMs, floorTravelMs, doorTransitionMs, CreateDefaultElevatorConfigs(elevatorCount, minFloor, maxFloor))
@@ -452,6 +453,24 @@ public class ElevatorSystem
         return _elevators[index];
     }
 
+    public void EmergencyStopAll()
+    {
+        for (int i = 0; i < _elevators.Count; i++)
+        {
+            _elevators[i].EmergencyStop();
+        }
+        Console.WriteLine("[EMERGENCY] All elevators stopped — doors held open");
+    }
+
+    public void ResumeAll()
+    {
+        for (int i = 0; i < _elevators.Count; i++)
+        {
+            _elevators[i].ResumeFromEmergencyStop();
+        }
+        Console.WriteLine("[EMERGENCY] All elevators resumed");
+    }
+
     public int? FindBestElevator(Request request)
     {
         return Algorithm switch
@@ -475,8 +494,8 @@ public class ElevatorSystem
             {
                 var elevator = _elevators[i];
 
-                // Skip elevators in maintenance
-                if (elevator.InMaintenance)
+                // Skip elevators in maintenance or emergency stop
+                if (elevator.InMaintenance || elevator.InEmergencyStop)
                     continue;
 
                 // Skip elevators that can't serve pickup or destination floor
@@ -544,8 +563,8 @@ public class ElevatorSystem
             {
                 var elevator = _elevators[i];
 
-                // Skip elevators in maintenance
-                if (elevator.InMaintenance)
+                // Skip elevators in maintenance or emergency stop
+                if (elevator.InMaintenance || elevator.InEmergencyStop)
                     continue;
 
                 // Skip elevators that can't serve pickup or destination floor
@@ -599,8 +618,8 @@ public class ElevatorSystem
             {
                 var elevator = _elevators[i];
 
-                // Skip elevators in maintenance
-                if (elevator.InMaintenance)
+                // Skip elevators in maintenance or emergency stop
+                if (elevator.InMaintenance || elevator.InEmergencyStop)
                     continue;
 
                 // Skip elevators that can't serve pickup or destination floor
@@ -771,6 +790,13 @@ public class ElevatorSystem
 
         while (!cancellationToken.IsCancellationRequested)
         {
+            // Skip processing while in emergency stop
+            if (elevator.InEmergencyStop)
+            {
+                await Task.Delay(IDLE_DELAY_MS, cancellationToken);
+                continue;
+            }
+
             // Use system-level target retrieval instead of elevator queue
             if (GetNextTargetForElevator(elevatorIndex, out int targetFloor))
             {

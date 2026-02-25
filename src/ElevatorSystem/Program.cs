@@ -171,10 +171,17 @@ var fileMonitorTask = Task.Run(async () =>
                         processedFiles.Add(filename); // Skip this file in future iterations
                     }
                 }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Console.WriteLine($"[FILE] Access denied for {filename}: {ex.Message}");
+                    processedFiles.Add(filename);
+                    File.Move(filepath, Path.Combine(PROCESSED_DIR, filename));
+                }
                 catch (ArgumentException ex)
                 {
                     Console.WriteLine($"[FILE] Invalid request in {filename}: {ex.Message}");
-                    processedFiles.Add(filename); // Skip this file in future iterations
+                    processedFiles.Add(filename);
+                    File.Move(filepath, Path.Combine(PROCESSED_DIR, filename));
                 }
                 catch (IOException ex)
                 {
@@ -194,7 +201,7 @@ var fileMonitorTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine($"=== ELEVATOR SYSTEM ({PROFILE}: {configs.Length} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
-Console.WriteLine("Press [R] REQUEST | [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [M] MAINTENANCE | [Q] QUIT");
+Console.WriteLine("Press [R] REQUEST | [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [M] MAINTENANCE | [SPACE] EMERGENCY STOP | [Q] QUIT");
 Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
 Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}");
 Console.WriteLine($"Current Algorithm: {system.Algorithm}\n");
@@ -340,6 +347,20 @@ while (true)
             }
             break;
 
+        case ' ':
+            // Emergency stop toggle
+            if (system.IsEmergencyStopped)
+            {
+                system.ResumeAll();
+                Console.WriteLine("\n*** EMERGENCY STOP RELEASED ***\n");
+            }
+            else
+            {
+                system.EmergencyStopAll();
+                Console.WriteLine("\n*** EMERGENCY STOP ACTIVATED ***\n");
+            }
+            break;
+
         case 'Q':
             // Quit
             Console.WriteLine("\n\nShutting down elevator system...");
@@ -356,7 +377,7 @@ while (true)
             return;
 
         default:
-            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [D] Dispatch | [M] Maintenance | [Q] Quit\n");
+            Console.WriteLine($"\nUnknown key '{key.KeyChar}'. Press [R] Request | [S] Status | [A] Analytics | [D] Dispatch | [M] Maintenance | [SPACE] Emergency Stop | [Q] Quit\n");
             break;
     }
 
