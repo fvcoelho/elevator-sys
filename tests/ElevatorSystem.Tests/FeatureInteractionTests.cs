@@ -399,6 +399,136 @@ public class FeatureInteractionTests
 
     #endregion
 
+    #region Express Elevator Integration
+
+    [Fact]
+    public async Task Integration_ExpressElevator_CompletesRideOnServedFloors()
+    {
+        // Arrange - Express at floor 1 serves {1, 15-20}, Locals serve all
+        var configs = ElevatorSystem.CreateExpressLocalMix(1, 20);
+        var system = new ElevatorSystem(
+            minFloor: 1, maxFloor: 20, doorOpenMs: 5, floorTravelMs: 5,
+            doorTransitionMs: 5, elevatorConfigs: configs);
+
+        // Put Local elevators in maintenance to force Express
+        system.GetElevator(1).EnterMaintenance();
+        system.GetElevator(2).EnterMaintenance();
+
+        var cts = new CancellationTokenSource();
+        var processTask = Task.Run(() => system.ProcessRequestsAsync(cts.Token));
+
+        // Act - Request ride on Express-valid route (1→15)
+        var request = new Request(1, 15, minFloor: 1, maxFloor: 20);
+        system.AddRequest(request);
+
+        var processed = await WaitForSystemIdle(system, TimeSpan.FromSeconds(10));
+
+        // Assert
+        processed.Should().BeTrue("Express elevator should complete ride on served floors");
+        system.PendingRequestCount.Should().Be(0);
+        var completedIds = system.GetCompletedRequestIds();
+        completedIds.Should().Contain(request.RequestId);
+
+        cts.Cancel();
+        try { await processTask; } catch (OperationCanceledException) { }
+    }
+
+    [Fact]
+    public void Dispatch_ExpressAndLocal_BothCanServe_PicksClosest()
+    {
+        // Arrange - Express at floor 1, Local at floor 20
+        var configs = new[]
+        {
+            new ElevatorConfig
+            {
+                Label = "E",
+                InitialFloor = 1,
+                Type = ElevatorType.Express,
+                ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(15, 6)).ToHashSet(),
+                Capacity = 12
+            },
+            new ElevatorConfig
+            {
+                Label = "L",
+                InitialFloor = 20,
+                Type = ElevatorType.Local,
+                ServedFloors = null,
+                Capacity = 10
+            }
+        };
+
+        var system = new ElevatorSystem(
+            minFloor: 1, maxFloor: 20, doorOpenMs: 10, floorTravelMs: 10,
+            doorTransitionMs: 10, elevatorConfigs: configs);
+
+        // Request 1→15 — Express at floor 1 (distance 0 to pickup) vs Local at floor 20 (distance 19)
+        var request = new Request(1, 15, minFloor: 1, maxFloor: 20);
+
+        // Act
+        var bestIndex = system.FindBestElevator(request);
+
+        // Assert - Express (index 0) is much closer
+        bestIndex.Should().Be(0, "Express at floor 1 is closest to pickup floor 1");
+    }
+
+    [Fact]
+    public async Task Integration_ConcurrentRequests_WithExpressFiltering()
+    {
+        // Arrange - Express + 2 Locals
+        var configs = ElevatorSystem.CreateExpressLocalMix(1, 20);
+        var system = new ElevatorSystem(
+            minFloor: 1, maxFloor: 20, doorOpenMs: 5, floorTravelMs: 5,
+            doorTransitionMs: 5, elevatorConfigs: configs);
+
+        var cts = new CancellationTokenSource();
+        var processTask = Task.Run(() => system.ProcessRequestsAsync(cts.Token));
+
+        // Act - 20 concurrent requests, mix of Express-compatible and incompatible routes
+        var tasks = new Task[20];
+        var requestIds = new System.Collections.Concurrent.ConcurrentBag<int>();
+
+        for (int i = 0; i < 20; i++)
+        {
+            var index = i;
+            tasks[i] = Task.Run(() =>
+            {
+                Request req;
+                if (index % 2 == 0)
+                {
+                    // Express-compatible: 1→(15+index%6)
+                    req = new Request(1, 15 + (index % 6), minFloor: 1, maxFloor: 20);
+                }
+                else
+                {
+                    // Express-incompatible: middle floors
+                    var pickup = 2 + (index % 8);
+                    var dest = 10 + (index % 5);
+                    req = new Request(pickup, dest, minFloor: 1, maxFloor: 20);
+                }
+
+                requestIds.Add(req.RequestId);
+                system.AddRequest(req);
+            });
+        }
+        await Task.WhenAll(tasks);
+
+        // Wait for all to complete
+        var processed = await WaitForSystemIdle(system, TimeSpan.FromSeconds(30));
+
+        // Assert
+        processed.Should().BeTrue("all 20 concurrent requests should be processed");
+        system.PendingRequestCount.Should().Be(0);
+
+        var completedIds = system.GetCompletedRequestIds();
+        completedIds.Should().HaveCountGreaterThanOrEqualTo(20,
+            "all requests (Express-compatible and incompatible) should complete");
+
+        cts.Cancel();
+        try { await processTask; } catch (OperationCanceledException) { }
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private async Task<bool> WaitForSystemIdle(ElevatorSystem system, TimeSpan timeout)

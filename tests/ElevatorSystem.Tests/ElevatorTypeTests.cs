@@ -345,6 +345,114 @@ public class ElevatorTypeTests
     }
 
     [Fact]
+    public void Elevator_InitialFloorNotInServedFloors_ThrowsArgumentException()
+    {
+        // Arrange - Express elevator serves floors 1 and 15-20, but initialFloor=10
+        var servedFloors = new HashSet<int> { 1 };
+        servedFloors.UnionWith(Enumerable.Range(15, 6));
+
+        // Act & Assert
+        var act = () => new Elevator(
+            minFloor: 1,
+            maxFloor: 20,
+            initialFloor: 10,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            type: ElevatorType.Express,
+            servedFloors: servedFloors);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Initial floor 10*served floors*");
+    }
+
+    [Fact]
+    public void ElevatorSystem_ConfigInitialFloorNotInServedFloors_ThrowsArgumentException()
+    {
+        // Arrange - Config with InitialFloor not in ServedFloors
+        var configs = new[]
+        {
+            new ElevatorConfig
+            {
+                Label = "E1",
+                InitialFloor = 10,
+                Type = ElevatorType.Express,
+                ServedFloors = new HashSet<int> { 1, 15, 16, 17, 18, 19, 20 }
+            }
+        };
+
+        // Act & Assert
+        var act = () => new ElevatorSystem(
+            minFloor: 1,
+            maxFloor: 20,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            doorTransitionMs: 10,
+            elevatorConfigs: configs);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Elevator 'E1'*InitialFloor 10*not in its ServedFloors*");
+    }
+
+    [Fact]
+    public void Elevator_InitialFloorInServedFloors_CreatesSuccessfully()
+    {
+        // Arrange - Express elevator with initialFloor=1, which IS in servedFloors
+        var servedFloors = new HashSet<int> { 1 };
+        servedFloors.UnionWith(Enumerable.Range(15, 6));
+
+        // Act
+        var elevator = new Elevator(
+            minFloor: 1,
+            maxFloor: 20,
+            initialFloor: 1,
+            doorOpenMs: 10,
+            floorTravelMs: 10,
+            type: ElevatorType.Express,
+            servedFloors: servedFloors);
+
+        // Assert
+        elevator.CurrentFloor.Should().Be(1);
+        elevator.Type.Should().Be(ElevatorType.Express);
+        elevator.CanServeFloor(1).Should().BeTrue();
+        elevator.CanServeFloor(15).Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateExpressLocalMix_SmallMaxFloor_ProducesValidConfig()
+    {
+        // Act - (1, 10) should produce a valid config with dynamic express start
+        var configs = ElevatorSystem.CreateExpressLocalMix(1, 10);
+
+        // Assert
+        configs.Should().HaveCount(3);
+        configs[0].Type.Should().Be(ElevatorType.Express);
+        configs[0].ServedFloors.Should().NotBeNull();
+        configs[0].ServedFloors!.Should().Contain(1, "Express should serve lobby");
+
+        // expressStartFloor = 1 + (int)(10 * 0.7) = 1 + 7 = 8
+        configs[0].ServedFloors!.Should().Contain(8);
+        configs[0].ServedFloors!.Should().Contain(9);
+        configs[0].ServedFloors!.Should().Contain(10);
+
+        // InitialFloor must be in ServedFloors
+        configs[0].ServedFloors!.Should().Contain(configs[0].InitialFloor);
+
+        // Local elevators should have null ServedFloors
+        configs[1].ServedFloors.Should().BeNull();
+        configs[2].ServedFloors.Should().BeNull();
+    }
+
+    [Fact]
+    public void CreateExpressLocalMix_TooSmallRange_ThrowsArgumentException()
+    {
+        // Act & Assert - (1, 3) is only 3 floors, not enough for express/local mix
+        var act = () => ElevatorSystem.CreateExpressLocalMix(1, 3);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*at least 4 floors*");
+    }
+
+    [Fact]
     public void MixedElevatorSystem_DispatchesCorrectly()
     {
         // Arrange - 1 Express (1, 15-20), 1 Local (all), 1 Freight (all)

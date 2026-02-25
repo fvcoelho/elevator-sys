@@ -89,6 +89,13 @@ public class Elevator
         Type = type;
         ServedFloors = servedFloors ?? Enumerable.Range(minFloor, maxFloor - minFloor + 1).ToHashSet();
         Capacity = capacity;
+
+        if (!ServedFloors.Contains(initialFloor))
+        {
+            throw new ArgumentException(
+                $"Initial floor {initialFloor} is not within the elevator's served floors");
+        }
+
         _logger = logger;
         _currentFloor = initialFloor;
         _state = ElevatorState.IDLE;

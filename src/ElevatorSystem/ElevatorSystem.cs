@@ -103,6 +103,13 @@ public class ElevatorSystem
             var config = elevatorConfigs[i];
             var elevatorLabel = string.IsNullOrEmpty(config.Label) ? GetElevatorLabel(i) : config.Label;
 
+            if (config.ServedFloors != null && !config.ServedFloors.Contains(config.InitialFloor))
+            {
+                throw new ArgumentException(
+                    $"Elevator '{elevatorLabel}' has InitialFloor {config.InitialFloor} " +
+                    $"which is not in its ServedFloors set");
+            }
+
             // Initialize log file for this elevator
             var logFileName = $"elevator_{elevatorLabel}.log";
             var logFilePath = Path.Combine(_logsDirectory, logFileName);
@@ -194,10 +201,24 @@ public class ElevatorSystem
 
     /// <summary>
     /// Create a configuration with 1 Express elevator and 2 Local elevators
-    /// Express serves floors 1 and 15-20, Local serve all floors
+    /// Express serves lobby (minFloor) and top ~30% of floors, Local serve all floors
     /// </summary>
     public static ElevatorConfig[] CreateExpressLocalMix(int minFloor, int maxFloor)
     {
+        var floorRange = maxFloor - minFloor + 1;
+        if (floorRange < 4)
+        {
+            throw new ArgumentException(
+                $"Express/Local mix requires at least 4 floors (got {floorRange}: {minFloor}-{maxFloor})");
+        }
+
+        var expressStartFloor = minFloor + (int)(floorRange * 0.7);
+        if (maxFloor - expressStartFloor + 1 < 2)
+            expressStartFloor = maxFloor - 1;
+
+        var expressServedFloors = new HashSet<int> { minFloor };
+        expressServedFloors.UnionWith(Enumerable.Range(expressStartFloor, maxFloor - expressStartFloor + 1));
+
         return new[]
         {
             new ElevatorConfig
@@ -205,7 +226,7 @@ public class ElevatorSystem
                 Label = "A",
                 InitialFloor = minFloor,
                 Type = ElevatorType.Express,
-                ServedFloors = new HashSet<int> { minFloor }.Union(Enumerable.Range(15, maxFloor - 15 + 1)).ToHashSet(),
+                ServedFloors = expressServedFloors,
                 Capacity = 12
             },
             new ElevatorConfig

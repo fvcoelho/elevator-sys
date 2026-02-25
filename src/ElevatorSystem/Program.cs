@@ -1,7 +1,6 @@
 using ElevatorSystem;
 
 // Configuration Constants
-const int ELEVATOR_COUNT = 3;        // Configurable: 3-5 elevators
 const int MIN_FLOOR = 1;
 const int MAX_FLOOR = 20;            // Extended from 10 to 20
 const int DOOR_OPEN_MS = 3000;       // 3 seconds
@@ -9,13 +8,46 @@ const int FLOOR_TRAVEL_MS = 1500;    // 1.5 seconds per floor
 const string REQUESTS_DIR = "requests";   // Directory for pending requests
 const string PROCESSED_DIR = "processed"; // Directory for processed requests
 
+// ── System Profile ──
+// Change this single value to switch configurations:
+//   Standard  → [Local, Local, Local]             3 elevators, all floors
+//   Mixed     → [Local, Local, Express]           2 local + 1 express (lobby + floors 15-20)
+//   Full      → [Local, Local, Express, Freight]  2 local + 1 express + 1 freight (capacity 20)
+const string PROFILE = "Standard";
+
+ElevatorConfig[] configs = PROFILE switch
+{
+    "Mixed" => new[]
+    {
+        new ElevatorConfig { Label = "A", InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "B", InitialFloor = 10, Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "C", InitialFloor = 20, Type = ElevatorType.Express,
+            ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(15, 6)).ToHashSet(), Capacity = 12 },
+    },
+    "Full" => new[]
+    {
+        new ElevatorConfig { Label = "A",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "B",  InitialFloor = 10, Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "C",  InitialFloor = 20, Type = ElevatorType.Express,
+            ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(15, 6)).ToHashSet(), Capacity = 12 },
+        new ElevatorConfig { Label = "F1", InitialFloor = 1,  Type = ElevatorType.Freight, Capacity = 20 },
+    },
+    _ => new[] // "Standard"
+    {
+        new ElevatorConfig { Label = "A", InitialFloor = 1,  Type = ElevatorType.Local, Capacity = 10 },
+        new ElevatorConfig { Label = "B", InitialFloor = 10, Type = ElevatorType.Local, Capacity = 10 },
+        new ElevatorConfig { Label = "C", InitialFloor = 20, Type = ElevatorType.Local, Capacity = 10 },
+    },
+};
+
 // Create multi-elevator system
 var system = new ElevatorSystem.ElevatorSystem(
-    elevatorCount: ELEVATOR_COUNT,
     minFloor: MIN_FLOOR,
     maxFloor: MAX_FLOOR,
     doorOpenMs: DOOR_OPEN_MS,
-    floorTravelMs: FLOOR_TRAVEL_MS);
+    floorTravelMs: FLOOR_TRAVEL_MS,
+    doorTransitionMs: 1000,
+    elevatorConfigs: configs);
 
 // Create directories if they don't exist
 if (!Directory.Exists(REQUESTS_DIR))
@@ -145,7 +177,7 @@ var fileMonitorTask = Task.Run(async () =>
 }, cts.Token);
 
 // Main console interface loop
-Console.WriteLine($"=== ELEVATOR SYSTEM ({ELEVATOR_COUNT} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
+Console.WriteLine($"=== ELEVATOR SYSTEM ({PROFILE}: {configs.Length} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
 Console.WriteLine("Press [R] REQUEST | [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [M] MAINTENANCE | [Q] QUIT");
 Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
 Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}");
