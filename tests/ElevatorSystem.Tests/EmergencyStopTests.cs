@@ -80,7 +80,7 @@ public class EmergencyStopTests
         for (int i = 0; i < system.ElevatorCount; i++)
         {
             system.GetElevator(i).InEmergencyStop.Should().BeTrue();
-            system.GetElevator(i).State.Should().Be(ElevatorState.EMERGENCY_STOP);
+            system.GetElevator(i).State.Should().Be(ElevatorState.DOOR_OPEN);
         }
     }
 

@@ -18,7 +18,7 @@ int[] VIP_FLOORS = { 13 };
 //   Standard  → [Local, Local, Local]             3 elevators, all floors
 //   Mixed     → [Local, Local, Express]           2 local + 1 express (lobby + floors 15-20)
 //   Full      → [Local, Local, Express, Freight]  2 local + 1 express + 1 freight (capacity 20)
-const string PROFILE = "Mixed";
+const string PROFILE = "Full";
 
 ElevatorConfig[] configs = PROFILE switch
 {
@@ -121,6 +121,7 @@ var fileMonitorTask = Task.Run(async () =>
                     int pickup = 0, destination = 0;
                     RequestPriority priority = RequestPriority.Normal;
                     AccessLevel accessLevel = AccessLevel.Standard;
+                    ElevatorType? preferredType = null;
                     bool validFormat = false;
 
                     if (parts.Length == 7 && parts[3] == "from" && parts[5] == "to")
@@ -146,14 +147,17 @@ var fileMonitorTask = Task.Run(async () =>
                                     accessLevel = AccessLevel.VIP;
                                     // VIP auto-elevates to High priority via Request constructor
                                     break;
+                                case "F" or "FREIGHT":
+                                    preferredType = ElevatorType.Freight;
+                                    break;
                             }
                         }
                     }
 
                     if (validFormat)
                     {
-                        // Create request with access level
-                        var request = new Request(pickup, destination, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR, accessLevel: accessLevel);
+                        // Create request with access level and preferred elevator type
+                        var request = new Request(pickup, destination, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR, accessLevel: accessLevel, preferredElevatorType: preferredType);
                         system.AddRequest(request);
 
                         // Mark as processed
@@ -201,7 +205,7 @@ var fileMonitorTask = Task.Run(async () =>
 
 // Main console interface loop
 Console.WriteLine($"=== ELEVATOR SYSTEM ({PROFILE}: {configs.Length} elevators, floors {MIN_FLOOR}-{MAX_FLOOR}) ===\n");
-Console.WriteLine("Press [R] REQUEST | [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [M] MAINTENANCE | [SPACE] EMERGENCY STOP | [Q] QUIT");
+Console.WriteLine("Press [S] STATUS | [A] ANALYTICS | [D] DISPATCH | [M] MAINTENANCE | [SPACE] EMERGENCY STOP | [Q] QUIT");
 Console.WriteLine($"\nMonitoring directory: {Path.GetFullPath(REQUESTS_DIR)}");
 Console.WriteLine($"Archiving to: {Path.GetFullPath(PROCESSED_DIR)}");
 Console.WriteLine($"Current Algorithm: {system.Algorithm}\n");
@@ -216,55 +220,6 @@ while (true)
 
     switch (keyChar)
     {
-        case 'R':
-            // Request a ride
-            Console.WriteLine("\n=== NEW RIDE REQUEST ===");
-
-            // Get pickup floor
-            Console.Write($"Pickup floor ({MIN_FLOOR}-{MAX_FLOOR}): ");
-            var pickupInput = Console.ReadLine();
-            if (!int.TryParse(pickupInput, out int pickupFloor))
-            {
-                Console.WriteLine("Invalid input. Please enter a number.\n");
-                break;
-            }
-
-            // Get destination floor
-            Console.Write($"Destination floor ({MIN_FLOOR}-{MAX_FLOOR}): ");
-            var destInput = Console.ReadLine();
-            if (!int.TryParse(destInput, out int destinationFloor))
-            {
-                Console.WriteLine("Invalid input. Please enter a number.\n");
-                break;
-            }
-
-            // Get priority
-            Console.Write("Priority [N]ormal / [H]igh (default: Normal): ");
-            var priorityInput = Console.ReadLine()?.Trim().ToUpper();
-
-            RequestPriority priority = priorityInput switch
-            {
-                "H" => RequestPriority.High,
-                _ => RequestPriority.Normal
-            };
-
-            // Create and add request
-            try
-            {
-                var request = new Request(pickupFloor, destinationFloor, priority, minFloor: MIN_FLOOR, maxFloor: MAX_FLOOR);
-                system.AddRequest(request);
-                Console.WriteLine();
-            }
-            catch (ArgumentException ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}\n");
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                Console.WriteLine($"Access Denied: {ex.Message}\n");
-            }
-            break;
-
         case 'S':
             // Display status
             Console.WriteLine();

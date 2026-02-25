@@ -11,6 +11,7 @@ public class Request
     public RequestPriority Priority { get; }
     public long Timestamp { get; }
     public AccessLevel AccessLevel { get; }
+    public ElevatorType? PreferredElevatorType { get; }
 
     public Request(
         int pickupFloor,
@@ -18,7 +19,8 @@ public class Request
         RequestPriority priority = RequestPriority.Normal,
         AccessLevel? accessLevel = null,
         int minFloor = 1,
-        int maxFloor = 20)
+        int maxFloor = 20,
+        ElevatorType? preferredElevatorType = null)
     {
         // Validate pickup floor
         if (pickupFloor < minFloor || pickupFloor > maxFloor)
@@ -58,6 +60,8 @@ public class Request
 
         // Auto-calculate direction
         Direction = destinationFloor > pickupFloor ? Direction.UP : Direction.DOWN;
+
+        PreferredElevatorType = preferredElevatorType;
     }
 
     public override string ToString()

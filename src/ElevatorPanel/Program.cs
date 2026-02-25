@@ -125,13 +125,14 @@ class Program
             return;
         }
 
-        // Get priority / VIP
-        Console.Write("Priority [N]ormal / [H]igh / [V]IP (default: Normal): ");
+        // Get priority / VIP / Freight
+        Console.Write("Priority [N]ormal / [H]igh / [V]IP / [F]reight (default: Normal): ");
         var priorityInput = Console.ReadLine()?.Trim().ToUpper();
         string priorityFlag = priorityInput switch
         {
             "H" or "HIGH" => "H",
             "V" or "VIP" => "V",
+            "F" or "FREIGHT" => "F",
             _ => ""
         };
 
@@ -140,7 +141,7 @@ class Program
         if (filename != null)
         {
             Console.WriteLine();
-            var priorityLabel = priorityFlag switch { "H" => " [HIGH]", "V" => " [VIP]", _ => "" };
+            var priorityLabel = priorityFlag switch { "H" => " [HIGH]", "V" => " [VIP]", "F" => " [FREIGHT]", _ => "" };
             Console.WriteLine($"✓ Request added: {pickup.Value} → {destination.Value}{priorityLabel}");
             Console.WriteLine($"  Created file: {filename}");
             Console.WriteLine();

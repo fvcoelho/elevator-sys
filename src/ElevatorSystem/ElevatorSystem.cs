@@ -515,6 +515,20 @@ public class ElevatorSystem
                 }
             }
 
+            // If a preferred elevator type is set, try matching elevators first
+            if (request.PreferredElevatorType.HasValue)
+            {
+                var preferredIdle = idleElevators.Where(e => _elevators[e.index].Type == request.PreferredElevatorType.Value).ToList();
+                var preferredBusy = busyElevators.Where(e => _elevators[e.index].Type == request.PreferredElevatorType.Value).ToList();
+
+                if (preferredIdle.Any())
+                    return preferredIdle.OrderBy(e => e.distance).First().index;
+                if (preferredBusy.Any())
+                    return preferredBusy.OrderBy(e => e.distance).First().index;
+
+                // No matching type available — fall through to normal logic
+            }
+
             // For HIGH priority, ignore idle preference and return absolutely closest
             if (request.Priority == RequestPriority.High)
             {
