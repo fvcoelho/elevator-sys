@@ -13,7 +13,7 @@ const string PROCESSED_DIR = "processed"; // Directory for processed requests
 //   Standard  → [Local, Local, Local]             3 elevators, all floors
 //   Mixed     → [Local, Local, Express]           2 local + 1 express (lobby + floors 15-20)
 //   Full      → [Local, Local, Express, Freight]  2 local + 1 express + 1 freight (capacity 20)
-const string PROFILE = "Standard";
+const string PROFILE = "Mixed";
 
 ElevatorConfig[] configs = PROFILE switch
 {
