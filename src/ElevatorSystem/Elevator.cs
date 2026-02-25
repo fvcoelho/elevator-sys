@@ -218,7 +218,7 @@ public class Elevator
         lock (_emergencyStopLock)
         {
             _emergencyStop = true;
-            State = ElevatorState.DOOR_OPEN;
+            State = ElevatorState.EMERGENCY_STOP;
             _logger?.LogWarning("Elevator {Label} EMERGENCY STOP activated", Label);
         }
     }

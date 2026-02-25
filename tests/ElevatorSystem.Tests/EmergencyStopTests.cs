@@ -37,7 +37,7 @@ public class EmergencyStopTests
 
         // Assert
         elevator.InEmergencyStop.Should().BeTrue();
-        elevator.State.Should().Be(ElevatorState.DOOR_OPEN);
+        elevator.State.Should().Be(ElevatorState.EMERGENCY_STOP);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public class EmergencyStopTests
         for (int i = 0; i < system.ElevatorCount; i++)
         {
             system.GetElevator(i).InEmergencyStop.Should().BeTrue();
-            system.GetElevator(i).State.Should().Be(ElevatorState.DOOR_OPEN);
+            system.GetElevator(i).State.Should().Be(ElevatorState.EMERGENCY_STOP);
         }
     }
 

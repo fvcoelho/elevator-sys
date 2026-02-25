@@ -503,6 +503,11 @@ public class ElevatorSystem
                     !elevator.CanServeFloor(request.DestinationFloor))
                     continue;
 
+                // Skip Freight elevators for non-freight requests
+                if (elevator.Type == ElevatorType.Freight &&
+                    request.PreferredElevatorType != ElevatorType.Freight)
+                    continue;
+
                 var distance = CalculateDistance(elevator.CurrentFloor, request.PickupFloor);
 
                 if (elevator.State == ElevatorState.IDLE)
@@ -586,6 +591,11 @@ public class ElevatorSystem
                     !elevator.CanServeFloor(request.DestinationFloor))
                     continue;
 
+                // Skip Freight elevators for non-freight requests
+                if (elevator.Type == ElevatorType.Freight &&
+                    request.PreferredElevatorType != ElevatorType.Freight)
+                    continue;
+
                 double score = 0;
 
                 // High priority: ignore direction bonuses, just pick closest
@@ -639,6 +649,11 @@ public class ElevatorSystem
                 // Skip elevators that can't serve pickup or destination floor
                 if (!elevator.CanServeFloor(request.PickupFloor) ||
                     !elevator.CanServeFloor(request.DestinationFloor))
+                    continue;
+
+                // Skip Freight elevators for non-freight requests
+                if (elevator.Type == ElevatorType.Freight &&
+                    request.PreferredElevatorType != ElevatorType.Freight)
                     continue;
 
                 double score = 0;
