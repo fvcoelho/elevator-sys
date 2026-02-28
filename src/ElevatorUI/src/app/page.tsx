@@ -6,6 +6,7 @@ import { StatusBar } from "@/components/status-bar";
 import { ElevatorShaft } from "@/components/elevator-shaft";
 import { ElevatorPanel } from "@/components/elevator-panel";
 import { SystemControls } from "@/components/system-controls";
+import { TrafficGenerator } from "@/components/traffic-generator";
 
 const MAX_FLOOR = 20;
 
@@ -57,6 +58,8 @@ export default function Home() {
             onSetAlgorithm={setAlgorithm}
             onGetMetrics={getMetrics}
           />
+
+          <TrafficGenerator onRequestRide={requestRide} />
         </div>
       </div>
     </div>
