@@ -771,10 +771,18 @@ public class ElevatorSystem
         for (int i = 0; i < _elevators.Count; i++)
         {
             var index = i;
-            var task = ProcessElevatorAsync(index, cancellationToken);
-            _elevatorTasks.Add(task);
+            _elevatorTasks.Add(ProcessElevatorAsync(index, cancellationToken));
         }
 
+        // Run the dispatch loop
+        await ProcessDispatchLoopAsync(cancellationToken);
+
+        // Wait for all elevator tasks to complete
+        await Task.WhenAll(_elevatorTasks);
+    }
+
+    public async Task ProcessDispatchLoopAsync(CancellationToken cancellationToken = default)
+    {
         // Main dispatcher loop - process incoming requests with priority sorting
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -823,12 +831,9 @@ public class ElevatorSystem
             // Small delay to prevent tight loop
             await Task.Delay(REQUEST_LOOP_DELAY_MS, cancellationToken);
         }
-
-        // Wait for all elevator tasks to complete
-        await Task.WhenAll(_elevatorTasks);
     }
 
-    private async Task ProcessElevatorAsync(int elevatorIndex, CancellationToken cancellationToken)
+    public async Task ProcessElevatorAsync(int elevatorIndex, CancellationToken cancellationToken)
     {
         var elevator = _elevators[elevatorIndex];
         var elevatorLabel = GetElevatorLabel(elevatorIndex);

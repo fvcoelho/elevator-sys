@@ -13,8 +13,21 @@ var options = builder.Configuration
 var elevatorSystem = ElevatorSystemFactory.Create(options);
 builder.Services.AddSingleton(elevatorSystem);
 
-// Register background processing service
-builder.Services.AddHostedService<ElevatorSystemHostedService>();
+// Register dispatcher worker
+builder.Services.AddHostedService<DispatcherWorkerService>();
+
+// Register per-elevator workers
+for (int i = 0; i < elevatorSystem.ElevatorCount; i++)
+{
+    var index = i;
+    builder.Services.AddSingleton<IHostedService>(sp =>
+    {
+        var system = sp.GetRequiredService<ElevatorSystem.ElevatorSystem>();
+        var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
+        return new ElevatorWorkerService(system, index,
+            loggerFactory.CreateLogger<ElevatorWorkerService>());
+    });
+}
 
 // Add Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
