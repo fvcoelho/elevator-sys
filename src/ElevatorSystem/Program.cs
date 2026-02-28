@@ -18,7 +18,7 @@ int[] VIP_FLOORS = { 13 };
 //   Standard  → [Local, Local, Local]             3 elevators, all floors
 //   Mixed     → [Local, Local, Express]           2 local + 1 express (lobby + floors 15-20)
 //   Full      → [Local, Local, Express, Freight]  2 local + 1 express + 1 freight (capacity 20)
-const string PROFILE = "Full";
+const string PROFILE = "Full2";
 
 ElevatorConfig[] configs = PROFILE switch
 {
@@ -34,6 +34,16 @@ ElevatorConfig[] configs = PROFILE switch
         new ElevatorConfig { Label = "A",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
         new ElevatorConfig { Label = "B",  InitialFloor = 10, Type = ElevatorType.Local,   Capacity = 10 },
         new ElevatorConfig { Label = "C",  InitialFloor = 20, Type = ElevatorType.Express,
+            ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(15, 6)).ToHashSet(), Capacity = 12 },
+        new ElevatorConfig { Label = "F1", InitialFloor = 1,  Type = ElevatorType.Freight, Capacity = 20 },
+    },
+    "Full2" => new[]
+    {
+        new ElevatorConfig { Label = "A",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "B",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "C",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "D",  InitialFloor = 10, Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "E",  InitialFloor = 20, Type = ElevatorType.Express,
             ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(15, 6)).ToHashSet(), Capacity = 12 },
         new ElevatorConfig { Label = "F1", InitialFloor = 1,  Type = ElevatorType.Freight, Capacity = 20 },
     },
@@ -238,8 +248,9 @@ while (true)
             Console.WriteLine("  [1] Simple (closest + idle preference)");
             Console.WriteLine("  [2] SCAN (direction-aware, +100 bonus)");
             Console.WriteLine("  [3] LOOK (balanced, reverses at last request)");
+            Console.WriteLine("  [4] Custom (dynamic queue reordering, optimal routes)");
             Console.WriteLine($"\nCurrent: {system.Algorithm}");
-            Console.Write("\nSelect algorithm [1-3]: ");
+            Console.Write("\nSelect algorithm [1-4]: ");
 
             var algoKey = Console.ReadKey(intercept: true);
             Console.WriteLine(); // New line after key press
@@ -257,6 +268,10 @@ while (true)
                 case '3':
                     system.Algorithm = ElevatorSystem.DispatchAlgorithm.LOOK;
                     Console.WriteLine("✓ Switched to LOOK algorithm");
+                    break;
+                case '4':
+                    system.Algorithm = ElevatorSystem.DispatchAlgorithm.Custom;
+                    Console.WriteLine("✓ Switched to Custom algorithm");
                     break;
                 default:
                     Console.WriteLine("✗ Invalid selection - keeping current algorithm");

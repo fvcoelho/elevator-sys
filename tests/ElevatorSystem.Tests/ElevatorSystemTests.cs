@@ -24,15 +24,15 @@ public class ElevatorSystemTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(6)]
-    [InlineData(10)]
+    [InlineData(11)]
+    [InlineData(20)]
     public void Constructor_InvalidElevatorCount_ThrowsArgumentOutOfRangeException(int elevatorCount)
     {
         // Arrange & Act & Assert
         var act = () => new ElevatorSystem(elevatorCount, minFloor: 1, maxFloor: 20);
 
         act.Should().Throw<ArgumentOutOfRangeException>()
-            .WithMessage("*Elevator count must be between 1 and 5*");
+            .WithMessage("*Elevator count must be between 1 and 10*");
     }
 
     [Fact]

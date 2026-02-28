@@ -12,6 +12,7 @@ public class Elevator
     private readonly object _maintenanceLock = new();
     private bool _emergencyStop;
     private readonly object _emergencyStopLock = new();
+    private static readonly Random _random = new();
 
     public int MinFloor { get; }
     public int MaxFloor { get; }
@@ -166,7 +167,8 @@ public class Elevator
 
         State = ElevatorState.DOOR_OPEN;
         _logger?.LogInformation("State: DOOR_OPEN | Floor: {Floor}", CurrentFloor);
-        await Task.Delay(DoorOpenMs);
+        var delay = DoorOpenMs >= 1000 ? _random.Next(1000, 5001) : DoorOpenMs;
+        await Task.Delay(delay);
     }
 
     public async Task CloseDoor()
