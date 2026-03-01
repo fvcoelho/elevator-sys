@@ -6,6 +6,8 @@ import type {
   RequestResponseDto,
   MetricsDto,
   DispatchAlgorithm,
+  UpdateConfigDto,
+  AddElevatorDto,
 } from "@/types/elevator";
 
 const API_BASE = "http://localhost:5081/api";
@@ -60,6 +62,20 @@ export function useElevatorApi() {
     return apiFetch<MetricsDto>("/metrics");
   }, []);
 
+  const updateConfig = useCallback(async (dto: UpdateConfigDto) => {
+    return apiFetch<{ message: string; elevatorCount: number }>("/config", {
+      method: "PUT",
+      body: JSON.stringify(dto),
+    });
+  }, []);
+
+  const addElevator = useCallback(async (dto: AddElevatorDto) => {
+    return apiFetch<unknown>("/elevators", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }, []);
+
   return {
     requestRide,
     emergencyStop,
@@ -67,5 +83,7 @@ export function useElevatorApi() {
     setAlgorithm,
     toggleMaintenance,
     getMetrics,
+    updateConfig,
+    addElevator,
   };
 }

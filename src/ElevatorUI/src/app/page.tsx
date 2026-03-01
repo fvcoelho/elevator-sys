@@ -7,6 +7,7 @@ import { ElevatorShaft } from "@/components/elevator-shaft";
 import { ElevatorPanel } from "@/components/elevator-panel";
 import { SystemControls } from "@/components/system-controls";
 import { TrafficGenerator } from "@/components/traffic-generator";
+import { SystemConfig } from "@/components/system-config";
 
 const MAX_FLOOR = 20;
 
@@ -19,6 +20,8 @@ export default function Home() {
     setAlgorithm,
     toggleMaintenance,
     getMetrics,
+    updateConfig,
+    addElevator,
   } = useElevatorApi();
 
   return (
@@ -48,6 +51,12 @@ export default function Home() {
 
         {/* Controls sidebar */}
         <div className="w-80 flex-shrink-0 space-y-4">
+          <SystemConfig
+            status={status}
+            onUpdateConfig={updateConfig}
+            onAddElevator={addElevator}
+          />
+
           <ElevatorPanel onRequestRide={requestRide} />
 
           <SystemControls

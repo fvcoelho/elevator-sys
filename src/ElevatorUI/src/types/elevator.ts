@@ -28,6 +28,9 @@ export interface SystemStatusDto {
   pendingRequests: number;
   isEmergencyStopped: boolean;
   algorithm: string;
+  peopleWaiting: number;
+  peopleInTransit: number;
+  memoryUsedBytes: number;
   elevators: ElevatorDto[];
 }
 
@@ -58,6 +61,35 @@ export interface ElevatorMetricsDto {
   totalDoorTimeMs: number;
   utilization: number;
   averageFloorsPerTrip: number;
+}
+
+export type ElevatorType = "Local" | "Express" | "Freight";
+
+export interface ElevatorConfigDto {
+  label: string;
+  initialFloor: number;
+  type: string;
+  capacity: number;
+  servedFloors: number[] | null;
+}
+
+export interface UpdateConfigDto {
+  minFloor: number;
+  maxFloor: number;
+  doorOpenMs: number;
+  floorTravelMs: number;
+  doorTransitionMs: number;
+  algorithm: string;
+  vipFloors: number[];
+  elevators: ElevatorConfigDto[];
+}
+
+export interface AddElevatorDto {
+  label: string;
+  initialFloor: number;
+  type: string;
+  capacity: number;
+  servedFloors: number[] | null;
 }
 
 export interface MetricsDto {
