@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ElevatorDto } from "@/types/elevator";
+import type { Passenger } from "@/hooks/use-passengers";
 
 interface ElevatorShaftProps {
   elevator: ElevatorDto;
   maxFloor: number;
   onToggleMaintenance: (index: number) => void;
+  ridingPassengers?: Passenger[];
 }
 
 function stateColor(state: string): string {
@@ -58,6 +60,7 @@ export function ElevatorShaft({
   elevator,
   maxFloor,
   onToggleMaintenance,
+  ridingPassengers = [],
 }: ElevatorShaftProps) {
   const floors = Array.from({ length: maxFloor }, (_, i) => maxFloor - i);
   const servedSet = elevator.servedFloors
@@ -102,7 +105,12 @@ export function ElevatorShaft({
                   ${!isServed && !isCurrent ? "bg-muted/30 text-muted-foreground/40 border border-dashed border-muted-foreground/20" : ""}
                 `}
               >
-                {floor}
+                <span>{floor}</span>
+                {isCurrent && ridingPassengers.length > 0 && (
+                  <span className="ml-1 truncate text-[10px] font-semibold">
+                    {ridingPassengers.map((p) => p.name).join(", ")}
+                  </span>
+                )}
               </div>
             );
           })}

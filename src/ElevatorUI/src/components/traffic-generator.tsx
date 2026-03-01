@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { CreateRequestDto, RequestResponseDto } from "@/types/elevator";
+import { randomName } from "@/lib/passenger-names";
 
 const MIN_FLOOR = 1;
 const MAX_FLOOR = 20;
@@ -99,9 +100,10 @@ interface LogEntry {
 
 interface TrafficGeneratorProps {
   onRequestRide: (dto: CreateRequestDto) => Promise<RequestResponseDto>;
+  onPassengerAdded?: (name: string, pickup: number, destination: number) => void;
 }
 
-export function TrafficGenerator({ onRequestRide }: TrafficGeneratorProps) {
+export function TrafficGenerator({ onRequestRide, onPassengerAdded }: TrafficGeneratorProps) {
   const [running, setRunning] = useState(false);
   const [activeMode, setActiveMode] = useState<TrafficMode | null>(null);
   const [requestCount, setRequestCount] = useState(0);
@@ -132,6 +134,7 @@ export function TrafficGenerator({ onRequestRide }: TrafficGeneratorProps) {
 
       while (Date.now() - start < durationMs && !cancelRef.current) {
         const { pickup, destination } = config.pattern(Math.random);
+        const name = randomName();
         count++;
 
         try {
@@ -139,6 +142,7 @@ export function TrafficGenerator({ onRequestRide }: TrafficGeneratorProps) {
             pickupFloor: pickup,
             destinationFloor: destination,
           });
+          onPassengerAdded?.(name, pickup, destination);
           setLog((prev) => [
             { index: count, pickup, destination, ok: true },
             ...prev.slice(0, 49),
@@ -163,7 +167,7 @@ export function TrafficGenerator({ onRequestRide }: TrafficGeneratorProps) {
       setRunning(false);
       setActiveMode(null);
     },
-    [onRequestRide]
+    [onRequestRide, onPassengerAdded]
   );
 
   const generateRealistic = useCallback(async () => {
@@ -189,12 +193,14 @@ export function TrafficGenerator({ onRequestRide }: TrafficGeneratorProps) {
     // Spawn people: lobby -> random floor, then schedule return trip
     while (Date.now() - start < spawnDuration && !cancelRef.current) {
       const floor = randomRange(2, MAX_FLOOR);
+      const name = randomName();
       count++;
       const idx = count;
 
       // Send lobby -> floor
       try {
         await onRequestRide({ pickupFloor: 1, destinationFloor: floor });
+        onPassengerAdded?.(name, 1, floor);
         setLog((prev) => [
           { index: idx, pickup: 1, destination: floor, ok: true },
           ...prev.slice(0, 49),
@@ -212,6 +218,7 @@ export function TrafficGenerator({ onRequestRide }: TrafficGeneratorProps) {
 
       // Schedule return trip: floor -> lobby after a random stay delay
       const capturedFloor = floor;
+      const capturedName = name;
       const returnPromise = (async () => {
         const [sMin, sMax] = REALISTIC_CONFIG.stayDelayRange;
         await new Promise((r) => setTimeout(r, randomRange(sMin, sMax)));
@@ -224,6 +231,7 @@ export function TrafficGenerator({ onRequestRide }: TrafficGeneratorProps) {
             pickupFloor: capturedFloor,
             destinationFloor: 1,
           });
+          onPassengerAdded?.(capturedName, capturedFloor, 1);
           setLog((prev) => [
             { index: retIdx, pickup: capturedFloor, destination: 1, ok: true },
             ...prev.slice(0, 49),
@@ -257,7 +265,7 @@ export function TrafficGenerator({ onRequestRide }: TrafficGeneratorProps) {
     setElapsed(Math.floor((Date.now() - start) / 1000));
     setRunning(false);
     setActiveMode(null);
-  }, [onRequestRide]);
+  }, [onRequestRide, onPassengerAdded]);
 
   const generate = useCallback(
     (mode: TrafficMode) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,20 +13,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CreateRequestDto, RequestResponseDto } from "@/types/elevator";
+import { randomName } from "@/lib/passenger-names";
 
 interface ElevatorPanelProps {
   onRequestRide: (dto: CreateRequestDto) => Promise<RequestResponseDto>;
+  onPassengerAdded?: (name: string, pickup: number, destination: number) => void;
 }
 
-export function ElevatorPanel({ onRequestRide }: ElevatorPanelProps) {
+export function ElevatorPanel({ onRequestRide, onPassengerAdded }: ElevatorPanelProps) {
   const [pickup, setPickup] = useState("");
   const [destination, setDestination] = useState("");
   const [priority, setPriority] = useState("Normal");
+  const [passengerName, setPassengerName] = useState(randomName);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const rollName = useCallback(() => setPassengerName(randomName()), []);
 
   const handleSubmit = async () => {
     const pickupFloor = parseInt(pickup, 10);
@@ -60,12 +65,14 @@ export function ElevatorPanel({ onRequestRide }: ElevatorPanelProps) {
         destinationFloor: destFloor,
         priority,
       });
+      onPassengerAdded?.(passengerName, pickupFloor, destFloor);
       setFeedback({
         type: "success",
-        message: `Ride #${res.requestId}: Floor ${res.pickupFloor} → ${res.destinationFloor}`,
+        message: `${passengerName} → Ride #${res.requestId}: Floor ${res.pickupFloor} → ${res.destinationFloor}`,
       });
       setPickup("");
       setDestination("");
+      setPassengerName(randomName());
     } catch (err) {
       setFeedback({
         type: "error",
@@ -82,6 +89,21 @@ export function ElevatorPanel({ onRequestRide }: ElevatorPanelProps) {
         <CardTitle className="text-base">Request Ride</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <Label htmlFor="passenger">Passenger</Label>
+          <div className="flex gap-2">
+            <Input
+              id="passenger"
+              value={passengerName}
+              onChange={(e) => setPassengerName(e.target.value)}
+              className="flex-1"
+            />
+            <Button variant="outline" size="sm" onClick={rollName} type="button">
+              Random
+            </Button>
+          </div>
+        </div>
+
         <div className="space-y-1">
           <Label htmlFor="pickup">Pickup Floor</Label>
           <Input
