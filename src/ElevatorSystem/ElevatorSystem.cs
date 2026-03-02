@@ -753,6 +753,7 @@ public class ElevatorSystem
         progress.PendingFloors.Enqueue(request.DestinationFloor);
 
         _activeRequests[request.RequestId] = progress;
+        elevator.ActiveRequestIds = GetActiveRequestIdsForElevator(elevatorIndex);
 
         // Add pickup floor first, then destination floor to system-level target queue
         // This ensures the elevator goes to pickup the passenger before going to their destination
@@ -938,6 +939,7 @@ public class ElevatorSystem
             {
                 _completedRequestIds.Add(progress.RequestId);
                 _activeRequests.TryRemove(progress.RequestId, out _);
+                _elevators[elevatorIndex].ActiveRequestIds = GetActiveRequestIdsForElevator(elevatorIndex);
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: FULLY COMPLETE");
 
                 // Track performance metrics
@@ -988,6 +990,14 @@ public class ElevatorSystem
             }
             return Array.Empty<int>();
         }
+    }
+
+    public int[] GetActiveRequestIdsForElevator(int elevatorIndex)
+    {
+        return _activeRequests.Values
+            .Where(p => p.AssignedElevatorIndex == elevatorIndex)
+            .Select(p => p.RequestId)
+            .ToArray();
     }
 
     public static (List<int> Order, int TotalDistance) CalculateOptimalOrder(

@@ -68,6 +68,7 @@ public static class StatusEndpoints
     {
         var elevator = system.GetElevator(index);
         var targets = system.GetElevatorTargets(index).ToArray();
+        var requestIds = system.GetActiveRequestIdsForElevator(index);
 
         return new ElevatorDto(
             index,
@@ -79,6 +80,7 @@ public static class StatusEndpoints
             elevator.InEmergencyStop,
             elevator.Capacity,
             elevator.ServedFloors?.ToArray(),
-            targets);
+            targets,
+            requestIds);
     }
 }

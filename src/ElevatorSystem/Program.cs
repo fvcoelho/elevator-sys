@@ -3,8 +3,8 @@ using ElevatorSystem;
 // Configuration Constants
 const int MIN_FLOOR = 1;
 const int MAX_FLOOR = 20;            // Extended from 10 to 20
-const int DOOR_OPEN_MS = 3000;       // 3 seconds
-const int FLOOR_TRAVEL_MS = 1500;    // 1.5 seconds per floor
+const int DOOR_OPEN_MS = 500;       // 3 seconds
+const int FLOOR_TRAVEL_MS = 500;    // 1.5 seconds per floor
 const string REQUESTS_DIR = "requests";   // Directory for pending requests
 const string PROCESSED_DIR = "processed"; // Directory for processed requests
 
@@ -61,7 +61,7 @@ var system = new ElevatorSystem.ElevatorSystem(
     maxFloor: MAX_FLOOR,
     doorOpenMs: DOOR_OPEN_MS,
     floorTravelMs: FLOOR_TRAVEL_MS,
-    doorTransitionMs: 1000,
+    doorTransitionMs: 500,
     elevatorConfigs: configs);
 
 // Apply VIP floor restrictions

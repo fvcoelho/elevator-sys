@@ -45,6 +45,7 @@ export interface ElevatorDto {
   capacity: number;
   servedFloors: number[] | null;
   targetFloors: number[];
+  requestIds: number[];
 }
 
 export interface SystemStatusDto {

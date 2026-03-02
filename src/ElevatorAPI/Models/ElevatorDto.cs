@@ -10,4 +10,5 @@ public record ElevatorDto(
     bool InEmergencyStop,
     int Capacity,
     int[]? ServedFloors,
-    int[] TargetFloors);
+    int[] TargetFloors,
+    int[] RequestIds);
