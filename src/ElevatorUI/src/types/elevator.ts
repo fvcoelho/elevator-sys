@@ -13,11 +13,13 @@ export interface Passenger {
   arrivedAt?: number;
   elevatorIndex?: number;
   requestId?: number;
+  priorityMode?: string; // "Normal" | "High" | "VIP" | "Freight"
 }
 
 export interface ReturnTripRequest {
   name: string;
   fromFloor: number;
+  priorityMode?: string;
 }
 
 // --- Elevator Types ---

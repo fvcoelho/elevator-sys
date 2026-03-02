@@ -26,7 +26,8 @@ interface ElevatorPanelProps {
     pickup: number,
     destination: number,
     returnDelaySec?: number,
-    requestId?: number
+    requestId?: number,
+    priorityMode?: string
   ) => void;
   onClearPassengers?: () => void;
 }
@@ -107,7 +108,7 @@ export function ElevatorPanel({
 
     try {
       const res = await onRequestRide(dto);
-      onPassengerAdded?.(name, 1, destFloor, delaySec, res.requestId);
+      onPassengerAdded?.(name, 1, destFloor, delaySec, res.requestId, priority);
       addLog(
         `${name} → #${res.requestId}: Lobby → F${res.destinationFloor} (${delaySec}s) → Lobby`,
         true
@@ -130,7 +131,7 @@ export function ElevatorPanel({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Request Ride Roundtrip</CardTitle>
+        <CardTitle className="text-base">Request Round-Trip Ride</CardTitle>
       </CardHeader>
 
       <CardContent className="space-y-3">
@@ -204,7 +205,7 @@ export function ElevatorPanel({
             onClick={handleSubmit}
             disabled={submitting}
           >
-            {submitting ? "Sending..." : "Request Roundtrip"}
+            {submitting ? "Sending..." : "Request"}
           </Button>
           <Button
             variant="outline"

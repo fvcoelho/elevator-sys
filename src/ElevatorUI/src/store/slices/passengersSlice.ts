@@ -68,6 +68,7 @@ export interface RequestLogEntry {
   name: string;
   pickupFloor: number;
   destinationFloor: number;
+  priorityMode?: string;
 }
 
 // --- State ---
@@ -133,6 +134,7 @@ export const scheduleReturnTrip = createAsyncThunk<
         returnQueueItemAdded({
           name: passenger.name,
           fromFloor: passenger.destinationFloor,
+          priorityMode: passenger.priorityMode,
         })
       );
     }
@@ -153,16 +155,17 @@ const passengersSlice = createSlice({
         destinationFloor: number;
         returnDelaySec?: number;
         requestId?: number;
+        priorityMode?: string;
       }>
     ) {
-      const { name, pickupFloor, destinationFloor, requestId } = action.payload;
+      const { name, pickupFloor, destinationFloor, requestId, priorityMode } = action.payload;
       state.passengers.push({
         id: state.nextId++,
         ...action.payload,
         status: "waiting",
         currentFloor: pickupFloor,
       });
-      state.requestLog.push({ requestId, name, pickupFloor, destinationFloor });
+      state.requestLog.push({ requestId, name, pickupFloor, destinationFloor, priorityMode });
     },
 
     requestLogEntryAdded(

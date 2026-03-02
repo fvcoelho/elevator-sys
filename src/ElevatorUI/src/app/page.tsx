@@ -56,13 +56,18 @@ export default function Home() {
     const trips = [...returnQueue];
     dispatch(returnQueueConsumed());
     for (const trip of trips) {
-      requestRide({ pickupFloor: trip.fromFloor, destinationFloor: 1 })
+      const dto: Parameters<typeof requestRide>[0] = { pickupFloor: trip.fromFloor, destinationFloor: 1 };
+      if (trip.priorityMode === "High") dto.priority = "High";
+      else if (trip.priorityMode === "VIP") dto.accessLevel = "VIP";
+      else if (trip.priorityMode === "Freight") dto.preferredElevatorType = "Freight";
+      requestRide(dto)
         .then((res) => {
           dispatch(requestLogEntryAdded({
             requestId: res.requestId,
             name: trip.name,
             pickupFloor: trip.fromFloor,
             destinationFloor: 1,
+            priorityMode: trip.priorityMode,
           }));
         })
         .catch(() => {
@@ -136,8 +141,8 @@ export default function Home() {
 
           <ElevatorPanel
             onRequestRide={requestRide}
-            onPassengerAdded={(name, pickupFloor, destinationFloor, returnDelaySec, requestId) =>
-              dispatch(passengerAdded({ name, pickupFloor, destinationFloor, returnDelaySec, requestId }))
+            onPassengerAdded={(name, pickupFloor, destinationFloor, returnDelaySec, requestId, priorityMode) =>
+              dispatch(passengerAdded({ name, pickupFloor, destinationFloor, returnDelaySec, requestId, priorityMode }))
             }
             onClearPassengers={() => dispatch(passengersCleared())}
           />
