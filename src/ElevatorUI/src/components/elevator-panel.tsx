@@ -97,12 +97,16 @@ export function ElevatorPanel({
     setSubmitting(true);
     const name = passengerName;
 
+    const dto: Parameters<typeof onRequestRide>[0] = {
+      pickupFloor: 1,
+      destinationFloor: destFloor,
+    };
+    if (priority === "High") dto.priority = "High";
+    else if (priority === "VIP") dto.accessLevel = "VIP";
+    else if (priority === "Freight") dto.preferredElevatorType = "Freight";
+
     try {
-      const res = await onRequestRide({
-        pickupFloor: 1,
-        destinationFloor: destFloor,
-        priority,
-      });
+      const res = await onRequestRide(dto);
       onPassengerAdded?.(name, 1, destFloor, delaySec, res.requestId);
       addLog(
         `${name} → #${res.requestId}: Lobby → F${res.destinationFloor} (${delaySec}s) → Lobby`,
@@ -183,6 +187,8 @@ export function ElevatorPanel({
               <SelectContent>
                 <SelectItem value="Normal">Normal</SelectItem>
                 <SelectItem value="High">High</SelectItem>
+                <SelectItem value="VIP">VIP</SelectItem>
+                <SelectItem value="Freight">Freight</SelectItem>
               </SelectContent>
             </Select>
           </div>

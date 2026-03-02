@@ -15,7 +15,7 @@ interface ElevatorState {
 const initialState: ElevatorState = {
   status: null,
   messageCount: 0,
-  vipFloors: [],
+  vipFloors: [13],
 };
 
 // --- Slice ---

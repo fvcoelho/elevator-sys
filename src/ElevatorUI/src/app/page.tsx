@@ -23,7 +23,6 @@ import { TrafficGenerator } from "@/components/traffic-generator";
 import { SystemConfig } from "@/components/system-config";
 import { BuildingView } from "@/components/building-view";
 import { DevTimeline } from "@/components/dev-timeline";
-import { WsPayloadViewer } from "@/components/ws-payload-viewer";
 import { RequestLog } from "@/components/request-log";
 
 const MAX_FLOOR = 20;
@@ -145,7 +144,6 @@ export default function Home() {
 
           <RequestLog />
 
-          <WsPayloadViewer />
         </div>
       </div>
 
