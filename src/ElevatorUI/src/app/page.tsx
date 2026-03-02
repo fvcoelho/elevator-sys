@@ -5,7 +5,7 @@ import { useAppSelector } from "@/hooks/use-app-selector";
 import { useAppDispatch } from "@/hooks/use-app-dispatch";
 import { useElevatorApi } from "@/hooks/use-elevator-api";
 import type { ElevatorDto } from "@/types/elevator";
-import { selectStatus, selectMessageCount, selectIsEmergencyStopped, selectAlgorithm } from "@/store/slices/elevatorSlice";
+import { selectStatus, selectMessageCount, selectIsEmergencyStopped, selectAlgorithm, selectVipFloors } from "@/store/slices/elevatorSlice";
 import { selectIsConnected } from "@/store/slices/connectionSlice";
 import {
   selectReturnQueue,
@@ -35,6 +35,7 @@ export default function Home() {
   const messageCount = useAppSelector(selectMessageCount);
   const isEmergencyStopped = useAppSelector(selectIsEmergencyStopped);
   const currentAlgorithm = useAppSelector(selectAlgorithm);
+  const vipFloors = useAppSelector(selectVipFloors);
   const returnQueue = useAppSelector(selectReturnQueue);
   const totalPeople = useAppSelector(selectTotalPeople);
   const waitingLobby = useAppSelector(selectWaitingLobby);
@@ -103,6 +104,7 @@ export default function Home() {
               key={elevator.index}
               elevator={elevator}
               maxFloor={MAX_FLOOR}
+              vipFloors={vipFloors}
               onToggleMaintenance={toggleMaintenance}
             />
           ))}
@@ -112,6 +114,7 @@ export default function Home() {
               maxFloor={MAX_FLOOR}
               totalPeople={totalPeople}
               waitingLobby={waitingLobby}
+              vipFloors={vipFloors}
             />
           )}
 

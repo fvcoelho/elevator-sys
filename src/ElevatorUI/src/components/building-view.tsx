@@ -12,6 +12,7 @@ interface BuildingViewProps {
   maxFloor: number;
   totalPeople: number;
   waitingLobby: number;
+  vipFloors?: number[];
 }
 
 // --- Helpers ---
@@ -33,10 +34,11 @@ function formatCountdown(p: Passenger, now: number): string | null {
 
 // --- Component ---
 
-export function BuildingView({ maxFloor, totalPeople, waitingLobby }: BuildingViewProps) {
+export function BuildingView({ maxFloor, totalPeople, waitingLobby, vipFloors = [] }: BuildingViewProps) {
   const floors = Array.from({ length: maxFloor }, (_, i) => maxFloor - i);
   const [now, setNow] = useState(Date.now());
   const passengers = useAppSelector(selectPassengers);
+  const vipSet = new Set(vipFloors);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
@@ -69,6 +71,12 @@ export function BuildingView({ maxFloor, totalPeople, waitingLobby }: BuildingVi
           <span>people {totalPeople}</span>
           <span>lobby {waitingLobby}</span>
         </div>
+        {vipFloors.length > 0 && (
+          <div className="flex justify-center items-center gap-1.5 text-[10px] text-red-500">
+            <span className="inline-block w-3 h-3 rounded border-2 border-dashed border-red-500 bg-red-50 dark:bg-red-950/30 flex-shrink-0" />
+            VIP floor
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="px-3 pb-2">
@@ -76,16 +84,19 @@ export function BuildingView({ maxFloor, totalPeople, waitingLobby }: BuildingVi
           {floors.map((floor) => {
             const people = byFloor.get(floor) ?? [];
 
+            const isLobby = floor === 1;
+            const isVip = vipSet.has(floor);
+
             return (
               <div
                 key={floor}
-                className="flex items-center h-6 rounded text-xs bg-muted px-1.5 overflow-hidden"
+                className={`flex items-center rounded text-xs px-1.5 ${isLobby ? "min-h-6 flex-wrap py-0.5" : "h-6 overflow-hidden"} ${isVip ? "border-2 border-dashed border-red-500 bg-red-50 dark:bg-red-950/30" : "bg-muted"}`}
               >
                 {people.length > 0 ? (
-                  <span className="truncate">
+                  <span className={isLobby ? "flex flex-wrap gap-x-1" : "truncate"}>
                     {people.map((p, i) => (
                       <span key={p.id}>
-                        {i > 0 && ", "}
+                        {!isLobby && i > 0 && ", "}
                         <span className={`font-semibold ${passengerColor(p)}`}>
                           {p.name}
                         </span>

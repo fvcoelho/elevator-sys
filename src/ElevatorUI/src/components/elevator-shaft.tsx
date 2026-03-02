@@ -1,15 +1,19 @@
 "use client";
 
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ElevatorDto } from "@/types/elevator";
+import { useAppSelector } from "@/hooks/use-app-selector";
+import { selectRequestLog } from "@/store/slices/passengersSlice";
 
 // --- Props ---
 
 interface ElevatorShaftProps {
   elevator: ElevatorDto;
   maxFloor: number;
+  vipFloors: number[];
   onToggleMaintenance: (index: number) => void;
 }
 
@@ -50,13 +54,23 @@ function stateLabel(state: string): string {
 export function ElevatorShaft({
   elevator,
   maxFloor,
+  vipFloors,
   onToggleMaintenance,
 }: ElevatorShaftProps) {
   const floors = Array.from({ length: maxFloor }, (_, i) => maxFloor - i);
+  const requestLog = useAppSelector(selectRequestLog);
+  const nameByRequestId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const entry of requestLog) {
+      if (entry.requestId !== undefined) map.set(entry.requestId, entry.name);
+    }
+    return map;
+  }, [requestLog]);
   const servedSet = elevator.servedFloors
     ? new Set(elevator.servedFloors)
     : null;
   const targetSet = new Set(elevator.targetFloors);
+  const vipSet = new Set(vipFloors);
 
   return (
     <Card className="w-36 flex-shrink-0">
@@ -85,21 +99,25 @@ export function ElevatorShaft({
             const isCurrent = floor === elevator.currentFloor;
             const isTarget = targetSet.has(floor);
             const isServed = servedSet === null || servedSet.has(floor);
+            const isVip = vipSet.has(floor);
 
             return (
               <div
                 key={floor}
                 className={`flex items-center justify-center h-6 rounded text-xs font-mono transition-colors
-                  ${isCurrent ? `${stateColor(elevator.state)} text-white font-bold` : ""}
+                  ${isCurrent ? `${stateColor(elevator.state)} text-white font-bold ring-2 ${isVip ? "ring-red-400" : "ring-transparent"}` : ""}
                   ${!isCurrent && isTarget ? "ring-2 ring-blue-400 bg-blue-50 dark:bg-blue-950" : ""}
-                  ${!isCurrent && !isTarget && isServed ? "bg-muted" : ""}
+                  ${!isCurrent && !isTarget && isServed && !isVip ? "bg-muted" : ""}
+                  ${!isCurrent && !isTarget && isVip ? "border-2 border-dashed border-red-500 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-semibold" : ""}
                   ${!isServed && !isCurrent ? "bg-muted/30 text-muted-foreground/40 border border-dashed border-muted-foreground/20" : ""}
                 `}
               >
                 <span>{floor}</span>
                 {isCurrent && elevator.requestIds.length > 0 && (
                   <span className="ml-1 truncate text-[10px] font-semibold">
-                    {elevator.requestIds.map((id) => `#${id}`).join(" ")}
+                    {elevator.requestIds
+                      .map((id) => nameByRequestId.get(id) ?? `#${id}`)
+                      .join(" ")}
                   </span>
                 )}
               </div>

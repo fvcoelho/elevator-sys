@@ -83,7 +83,7 @@ public class Elevator
         int floorTravelMs,
         string label = "",
         ILogger? logger = null,
-        int doorTransitionMs = 1000,
+        int doorTransitionMs = 500,
         ElevatorType type = ElevatorType.Local,
         HashSet<int>? servedFloors = null,
         int capacity = 10)

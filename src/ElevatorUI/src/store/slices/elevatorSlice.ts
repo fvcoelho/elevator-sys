@@ -7,6 +7,7 @@ import type { SystemStatusDto } from "@/types/elevator";
 interface ElevatorState {
   status: SystemStatusDto | null;
   messageCount: number;
+  vipFloors: number[];
 }
 
 // Always start empty — localStorage is loaded client-side after mount
@@ -14,6 +15,7 @@ interface ElevatorState {
 const initialState: ElevatorState = {
   status: null,
   messageCount: 0,
+  vipFloors: [],
 };
 
 // --- Slice ---
@@ -36,10 +38,13 @@ const elevatorSlice = createSlice({
         state.status = action.payload.status;
       }
     },
+    vipFloorsUpdated(state, action: PayloadAction<number[]>) {
+      state.vipFloors = action.payload;
+    },
   },
 });
 
-export const { statusReceived, statusCleared, hydrateElevator } = elevatorSlice.actions;
+export const { statusReceived, statusCleared, hydrateElevator, vipFloorsUpdated } = elevatorSlice.actions;
 export default elevatorSlice.reducer;
 
 // --- Selectors ---
@@ -65,6 +70,9 @@ export const selectIsEmergencyStopped = createSelector(
   selectStatus,
   (status) => status?.isEmergencyStopped ?? false
 );
+
+export const selectVipFloors = (state: ElevatorRootState) =>
+  state.elevator.vipFloors;
 
 // Re-export state type alias for use in other files
 export type { ElevatorRootState };

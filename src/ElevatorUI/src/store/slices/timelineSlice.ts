@@ -7,7 +7,7 @@ import type { WsStatus } from "./connectionSlice";
 // --- Snapshot type: full app state minus timeline itself ---
 
 export interface StateSnapshot {
-  elevator: { status: SystemStatusDto | null; messageCount: number };
+  elevator: { status: SystemStatusDto | null; messageCount: number; vipFloors: number[] };
   connection: { isConnected: boolean; wsStatus: WsStatus; backoffMs: number };
   passengers: { passengers: Passenger[]; nextId: number; returnQueue: ReturnTripRequest[]; requestLog: RequestLogEntry[] };
 }

@@ -11,7 +11,7 @@ const string PROCESSED_DIR = "processed"; // Directory for processed requests
 // ── VIP Floors ──
 // Add or remove floor numbers to control VIP access.
 // Standard users will be denied access to these floors.
-int[] VIP_FLOORS = { };
+int[] VIP_FLOORS = { 13 };
 
 // ── System Profile ──
 // Change this single value to switch configurations:

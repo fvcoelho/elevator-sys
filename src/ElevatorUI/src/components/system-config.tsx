@@ -30,6 +30,8 @@ import type {
   ElevatorConfigDto,
   DispatchAlgorithm,
 } from "@/types/elevator";
+import { useAppDispatch } from "@/hooks/use-app-dispatch";
+import { vipFloorsUpdated } from "@/store/slices/elevatorSlice";
 
 interface SystemConfigProps {
   status: SystemStatusDto | null;
@@ -40,9 +42,9 @@ interface SystemConfigProps {
 const DEFAULT_CONFIG: UpdateConfigDto = {
   minFloor: 1,
   maxFloor: 20,
-  doorOpenMs: 3000,
-  floorTravelMs: 1500,
-  doorTransitionMs: 1000,
+  doorOpenMs: 500,
+  floorTravelMs: 500,
+  doorTransitionMs: 500,
   algorithm: "Custom",
   vipFloors: [],
   elevators: [
@@ -56,6 +58,7 @@ export function SystemConfig({
   status,
   onUpdateConfig,
 }: SystemConfigProps) {
+  const dispatch = useAppDispatch();
   const [expanded, setExpanded] = useState(false);
   const [config, setConfig] = useState<UpdateConfigDto>(DEFAULT_CONFIG);
   const [initialized, setInitialized] = useState(false);
@@ -68,6 +71,8 @@ export function SystemConfig({
   const [newFloor, setNewFloor] = useState(1);
   const [newType, setNewType] = useState("Local");
   const [newCapacity, setNewCapacity] = useState(10);
+  const [expressMin, setExpressMin] = useState(10);
+  const [expressMax, setExpressMax] = useState(20);
 
   // Sync from status on first expand
   useEffect(() => {
@@ -92,6 +97,7 @@ export function SystemConfig({
     setFeedback(null);
     try {
       await onUpdateConfig(config);
+      dispatch(vipFloorsUpdated(config.vipFloors));
       setFeedback({ ok: true, msg: "Configuration applied" });
       setInitialized(false); // Re-sync on next expand
     } catch (err) {
@@ -105,12 +111,16 @@ export function SystemConfig({
   };
 
   const handleAddElevator = () => {
+    const isExpress = newType === "Express";
+    const servedFloors = isExpress
+      ? [1, ...Array.from({ length: Math.max(0, expressMax - expressMin + 1) }, (_, i) => expressMin + i)]
+      : null;
     const elevator: ElevatorConfigDto = {
       label: newLabel || `Elevator ${String.fromCharCode(65 + config.elevators.length)}`,
-      initialFloor: newFloor,
+      initialFloor: isExpress ? 1 : newFloor,
       type: newType,
       capacity: newCapacity,
-      servedFloors: null,
+      servedFloors,
     };
     setConfig((prev) => ({
       ...prev,
@@ -121,6 +131,8 @@ export function SystemConfig({
     setNewFloor(1);
     setNewType("Local");
     setNewCapacity(10);
+    setExpressMin(10);
+    setExpressMax(20);
     setDialogOpen(false);
   };
 
@@ -188,7 +200,7 @@ export function SystemConfig({
                   type="number"
                   value={config.doorOpenMs}
                   onChange={(e) =>
-                    setConfig((prev) => ({ ...prev, doorOpenMs: parseInt(e.target.value) || 3000 }))
+                    setConfig((prev) => ({ ...prev, doorOpenMs: parseInt(e.target.value) || 500 }))
                   }
                 />
               </div>
@@ -200,7 +212,7 @@ export function SystemConfig({
                   onChange={(e) =>
                     setConfig((prev) => ({
                       ...prev,
-                      floorTravelMs: parseInt(e.target.value) || 1500,
+                      floorTravelMs: parseInt(e.target.value) || 500,
                     }))
                   }
                 />
@@ -213,7 +225,7 @@ export function SystemConfig({
                   onChange={(e) =>
                     setConfig((prev) => ({
                       ...prev,
-                      doorTransitionMs: parseInt(e.target.value) || 1000,
+                      doorTransitionMs: parseInt(e.target.value) || 500,
                     }))
                   }
                 />
@@ -280,7 +292,10 @@ export function SystemConfig({
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{elev.label}</div>
                     <div className="text-muted-foreground">
-                      Floor {elev.initialFloor} &middot; Cap {elev.capacity}
+                      {elev.type === "Express" && elev.servedFloors
+                        ? `1 → ${elev.servedFloors.filter((f) => f !== 1)[0]}–${elev.servedFloors[elev.servedFloors.length - 1]}`
+                        : `Floor ${elev.initialFloor}`}{" "}
+                      &middot; Cap {elev.capacity}
                     </div>
                   </div>
                   <Badge variant="outline" className="text-[10px] shrink-0">
@@ -323,14 +338,16 @@ export function SystemConfig({
                       onChange={(e) => setNewLabel(e.target.value)}
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label>Initial Floor</Label>
-                    <Input
-                      type="number"
-                      value={newFloor}
-                      onChange={(e) => setNewFloor(parseInt(e.target.value) || 1)}
-                    />
-                  </div>
+                  {newType !== "Express" && (
+                    <div className="space-y-1">
+                      <Label>Initial Floor</Label>
+                      <Input
+                        type="number"
+                        value={newFloor}
+                        onChange={(e) => setNewFloor(parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <Label>Type</Label>
                     <Select value={newType} onValueChange={setNewType}>
@@ -344,6 +361,32 @@ export function SystemConfig({
                       </SelectContent>
                     </Select>
                   </div>
+                  {newType === "Express" && (
+                    <div className="space-y-2">
+                      <Label>Express Zone (Lobby → range)</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">From Floor</Label>
+                          <Input
+                            type="number"
+                            value={expressMin}
+                            onChange={(e) => setExpressMin(parseInt(e.target.value) || 2)}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">To Floor</Label>
+                          <Input
+                            type="number"
+                            value={expressMax}
+                            onChange={(e) => setExpressMax(parseInt(e.target.value) || 20)}
+                          />
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Serves: 1, {expressMin}–{expressMax}
+                      </p>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <Label>Capacity</Label>
                     <Input

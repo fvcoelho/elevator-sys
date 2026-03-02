@@ -78,7 +78,7 @@ public class ElevatorSystem
     /// <summary>People riding inside elevators (picked up but not yet delivered).</summary>
     public int PeopleInTransit => _activeRequests.Values.Count(p => p.PickupReached && !p.DestinationReached);
 
-    public ElevatorSystem(int elevatorCount, int minFloor, int maxFloor, int doorOpenMs = 3000, int floorTravelMs = 1500, int doorTransitionMs = 1000)
+    public ElevatorSystem(int elevatorCount, int minFloor, int maxFloor, int doorOpenMs = 500, int floorTravelMs = 500, int doorTransitionMs = 500)
         : this(minFloor, maxFloor, doorOpenMs, floorTravelMs, doorTransitionMs, CreateDefaultElevatorConfigs(elevatorCount, minFloor, maxFloor))
     {
     }

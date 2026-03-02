@@ -3,9 +3,9 @@ namespace ElevatorAPI.Models;
 public record UpdateConfigDto(
     int MinFloor,
     int MaxFloor,
-    int DoorOpenMs = 3000,
-    int FloorTravelMs = 1500,
-    int DoorTransitionMs = 1000,
+    int DoorOpenMs = 500,
+    int FloorTravelMs = 500,
+    int DoorTransitionMs = 500,
     string Algorithm = "Custom",
     int[] VIPFloors = default!,
     ElevatorConfigDto[] Elevators = default!)
