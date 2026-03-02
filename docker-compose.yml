@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Elevator REST API + WebSocket server
   api:
