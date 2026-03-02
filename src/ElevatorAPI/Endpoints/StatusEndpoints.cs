@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using ElevatorAPI.Models;
+using ElevatorAPI.Services;
 
 namespace ElevatorAPI.Endpoints;
 
@@ -6,14 +8,18 @@ public static class StatusEndpoints
 {
     public static RouteGroupBuilder MapStatusEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/status", (ElevatorSystem.ElevatorSystem system) =>
+        group.MapGet("/status", (ElevatorSystemHolder holder) =>
         {
+            var system = holder.Current;
             var elevators = BuildElevatorDtos(system);
             var status = new SystemStatusDto(
                 system.ElevatorCount,
                 system.PendingRequestCount,
                 system.IsEmergencyStopped,
                 system.Algorithm.ToString(),
+                system.PeopleWaiting,
+                system.PeopleInTransit,
+                Process.GetCurrentProcess().WorkingSet64,
                 elevators);
 
             return Results.Ok(status);
@@ -21,15 +27,16 @@ public static class StatusEndpoints
         .WithName("GetStatus")
         .Produces<SystemStatusDto>();
 
-        group.MapGet("/elevators", (ElevatorSystem.ElevatorSystem system) =>
+        group.MapGet("/elevators", (ElevatorSystemHolder holder) =>
         {
-            return Results.Ok(BuildElevatorDtos(system));
+            return Results.Ok(BuildElevatorDtos(holder.Current));
         })
         .WithName("GetElevators")
         .Produces<List<ElevatorDto>>();
 
-        group.MapGet("/elevators/{index:int}", (int index, ElevatorSystem.ElevatorSystem system) =>
+        group.MapGet("/elevators/{index:int}", (int index, ElevatorSystemHolder holder) =>
         {
+            var system = holder.Current;
             try
             {
                 var dto = BuildElevatorDto(system, index);

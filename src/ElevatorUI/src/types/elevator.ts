@@ -1,3 +1,26 @@
+// --- Passenger Types ---
+
+export type PassengerStatus = "waiting" | "riding" | "arrived" | "returning";
+
+export interface Passenger {
+  id: number;
+  name: string;
+  pickupFloor: number;
+  destinationFloor: number;
+  status: PassengerStatus;
+  currentFloor: number;
+  returnDelaySec?: number;
+  arrivedAt?: number;
+  elevatorIndex?: number;
+}
+
+export interface ReturnTripRequest {
+  name: string;
+  fromFloor: number;
+}
+
+// --- Elevator Types ---
+
 export type ElevatorState =
   | "IDLE"
   | "MOVING_UP"

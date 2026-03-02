@@ -1,4 +1,5 @@
 using ElevatorAPI.Models;
+using ElevatorAPI.Services;
 using ElevatorSystem;
 
 namespace ElevatorAPI.Endpoints;
@@ -7,8 +8,9 @@ public static class RequestEndpoints
 {
     public static RouteGroupBuilder MapRequestEndpoints(this RouteGroupBuilder group)
     {
-        group.MapPost("/requests", (CreateRequestDto dto, ElevatorSystem.ElevatorSystem system) =>
+        group.MapPost("/requests", (CreateRequestDto dto, ElevatorSystemHolder holder) =>
         {
+            var system = holder.Current;
             try
             {
                 var priority = RequestPriority.Normal;

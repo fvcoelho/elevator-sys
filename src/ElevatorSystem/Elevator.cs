@@ -167,8 +167,7 @@ public class Elevator
 
         State = ElevatorState.DOOR_OPEN;
         _logger?.LogInformation("State: DOOR_OPEN | Floor: {Floor}", CurrentFloor);
-        var delay = DoorOpenMs >= 1000 ? _random.Next(1000, 5001) : DoorOpenMs;
-        await Task.Delay(delay);
+        await Task.Delay(DoorOpenMs);
     }
 
     public async Task CloseDoor()

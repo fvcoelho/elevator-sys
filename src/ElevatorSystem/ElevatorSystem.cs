@@ -72,6 +72,12 @@ public class ElevatorSystem
     public DispatchAlgorithm Algorithm { get; set; } = DispatchAlgorithm.Simple;
     public bool IsEmergencyStopped => _elevators.Any(e => e.InEmergencyStop);
 
+    /// <summary>People waiting for pickup (request dispatched but pickup not yet reached).</summary>
+    public int PeopleWaiting => _activeRequests.Values.Count(p => !p.PickupReached);
+
+    /// <summary>People riding inside elevators (picked up but not yet delivered).</summary>
+    public int PeopleInTransit => _activeRequests.Values.Count(p => p.PickupReached && !p.DestinationReached);
+
     public ElevatorSystem(int elevatorCount, int minFloor, int maxFloor, int doorOpenMs = 3000, int floorTravelMs = 1500, int doorTransitionMs = 1000)
         : this(minFloor, maxFloor, doorOpenMs, floorTravelMs, doorTransitionMs, CreateDefaultElevatorConfigs(elevatorCount, minFloor, maxFloor))
     {
@@ -999,6 +1005,18 @@ public class ElevatorSystem
             totalToVisit++;
         }
 
+        // Determine initial travel direction from passengers already inside.
+        // If any passenger is already picked up, infer direction from their destinations.
+        int direction = 0; // 0 = undetermined, 1 = up, -1 = down
+        foreach (var p in pairs)
+        {
+            if (p.PickupAlreadyReached && !p.DestinationVisited)
+            {
+                direction = p.DestinationFloor > currentFloor ? 1 : -1;
+                break;
+            }
+        }
+
         for (int step = 0; step < totalToVisit; step++)
         {
             int bestFloor = -1;
@@ -1006,12 +1024,35 @@ public class ElevatorSystem
             PairState? bestPair = null;
             bool bestIsPickup = false;
 
+            // When passengers are inside the elevator, prioritize their destinations
+            // and same-direction pickups before allowing a direction reversal.
+            bool hasPassengersInside = false;
+            foreach (var p in pairs)
+            {
+                if ((p.PickupAlreadyReached || p.PickupVisited) && !p.DestinationVisited)
+                {
+                    hasPassengersInside = true;
+                    break;
+                }
+            }
+
             foreach (var p in pairs)
             {
                 // Consider unvisited pickup floors
                 if (!p.PickupAlreadyReached && !p.PickupVisited)
                 {
                     int dist = Math.Abs(position - p.PickupFloor);
+
+                    // If passengers are inside and we have a direction, only consider
+                    // pickups that are in the same direction (no reversal with passengers)
+                    if (hasPassengersInside && direction != 0)
+                    {
+                        bool sameDirection = direction > 0
+                            ? p.PickupFloor >= position
+                            : p.PickupFloor <= position;
+                        if (!sameDirection) continue;
+                    }
+
                     if (dist < bestDistance)
                     {
                         bestDistance = dist;
@@ -1036,6 +1077,27 @@ public class ElevatorSystem
                 }
             }
 
+            // If no same-direction candidate found (all remaining pickups are behind),
+            // fall back to considering all pickups (passengers have been dropped off by now
+            // or direction will naturally reverse after serving current passengers)
+            if (bestPair == null)
+            {
+                foreach (var p in pairs)
+                {
+                    if (!p.PickupAlreadyReached && !p.PickupVisited)
+                    {
+                        int dist = Math.Abs(position - p.PickupFloor);
+                        if (dist < bestDistance)
+                        {
+                            bestDistance = dist;
+                            bestFloor = p.PickupFloor;
+                            bestPair = p;
+                            bestIsPickup = true;
+                        }
+                    }
+                }
+            }
+
             if (bestPair == null) break;
 
             order.Add(bestFloor);
@@ -1046,6 +1108,18 @@ public class ElevatorSystem
                 bestPair.PickupVisited = true;
             else
                 bestPair.DestinationVisited = true;
+
+            // Update direction based on movement
+            if (order.Count >= 2)
+            {
+                int prev = order[order.Count - 2];
+                if (position != prev)
+                    direction = position > prev ? 1 : -1;
+            }
+            else if (position != currentFloor)
+            {
+                direction = position > currentFloor ? 1 : -1;
+            }
         }
 
         return (order, totalDistance);

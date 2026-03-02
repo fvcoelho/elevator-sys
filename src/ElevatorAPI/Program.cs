@@ -10,25 +10,13 @@ var options = builder.Configuration
     .GetSection(ElevatorSystemOptions.SectionName)
     .Get<ElevatorSystemOptions>() ?? new ElevatorSystemOptions();
 
-// Build and register elevator system as singleton
+// Build elevator system and wrap in holder
 var elevatorSystem = ElevatorSystemFactory.Create(options);
-builder.Services.AddSingleton(elevatorSystem);
+builder.Services.AddSingleton(sp =>
+    new ElevatorSystemHolder(elevatorSystem, options, sp.GetRequiredService<ILogger<ElevatorSystemHolder>>()));
 
-// Register dispatcher worker
-builder.Services.AddHostedService<DispatcherWorkerService>();
-
-// Register per-elevator workers
-for (int i = 0; i < elevatorSystem.ElevatorCount; i++)
-{
-    var index = i;
-    builder.Services.AddSingleton<IHostedService>(sp =>
-    {
-        var system = sp.GetRequiredService<ElevatorSystem.ElevatorSystem>();
-        var loggerFactory = sp.GetRequiredService<ILoggerFactory>();
-        return new ElevatorWorkerService(system, index,
-            loggerFactory.CreateLogger<ElevatorWorkerService>());
-    });
-}
+// Register system runner (replaces per-elevator and dispatcher workers)
+builder.Services.AddHostedService<SystemRunnerService>();
 
 // Register WebSocket broadcast service
 builder.Services.AddSingleton<WebSocketBroadcastService>();

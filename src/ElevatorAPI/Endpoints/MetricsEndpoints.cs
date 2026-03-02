@@ -1,4 +1,5 @@
 using ElevatorAPI.Models;
+using ElevatorAPI.Services;
 
 namespace ElevatorAPI.Endpoints;
 
@@ -6,9 +7,9 @@ public static class MetricsEndpoints
 {
     public static RouteGroupBuilder MapMetricsEndpoints(this RouteGroupBuilder group)
     {
-        group.MapGet("/metrics", (ElevatorSystem.ElevatorSystem system) =>
+        group.MapGet("/metrics", (ElevatorSystemHolder holder) =>
         {
-            var metrics = system.GetPerformanceMetrics();
+            var metrics = holder.Current.GetPerformanceMetrics();
 
             var elevatorStats = metrics.ElevatorStats.ToDictionary(
                 kvp => kvp.Key,

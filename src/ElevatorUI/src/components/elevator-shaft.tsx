@@ -4,73 +4,66 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ElevatorDto } from "@/types/elevator";
-import type { Passenger } from "@/hooks/use-passengers";
+import { useAppSelector } from "@/hooks/use-app-selector";
+import { selectRidingByElevator } from "@/store/slices/passengersSlice";
+
+// --- Props ---
 
 interface ElevatorShaftProps {
   elevator: ElevatorDto;
   maxFloor: number;
   onToggleMaintenance: (index: number) => void;
-  ridingPassengers?: Passenger[];
 }
 
+// --- Helpers ---
+
+const STATE_COLORS: Record<string, string> = {
+  IDLE: "bg-green-500",
+  MOVING_UP: "bg-blue-500",
+  MOVING_DOWN: "bg-blue-500",
+  DOOR_OPEN: "bg-yellow-500",
+  DOOR_OPENING: "bg-yellow-500",
+  DOOR_CLOSING: "bg-yellow-500",
+  MAINTENANCE: "bg-orange-500",
+  EMERGENCY_STOP: "bg-red-500",
+};
+
+const STATE_LABELS: Record<string, string> = {
+  IDLE: "Idle",
+  MOVING_UP: "Up",
+  MOVING_DOWN: "Down",
+  DOOR_OPEN: "Open",
+  DOOR_OPENING: "Opening",
+  DOOR_CLOSING: "Closing",
+  MAINTENANCE: "Maint.",
+  EMERGENCY_STOP: "E-Stop",
+};
+
 function stateColor(state: string): string {
-  switch (state) {
-    case "IDLE":
-      return "bg-green-500";
-    case "MOVING_UP":
-    case "MOVING_DOWN":
-      return "bg-blue-500";
-    case "DOOR_OPEN":
-    case "DOOR_OPENING":
-    case "DOOR_CLOSING":
-      return "bg-yellow-500";
-    case "MAINTENANCE":
-      return "bg-orange-500";
-    case "EMERGENCY_STOP":
-      return "bg-red-500";
-    default:
-      return "bg-gray-500";
-  }
+  return STATE_COLORS[state] ?? "bg-gray-500";
 }
 
 function stateLabel(state: string): string {
-  switch (state) {
-    case "IDLE":
-      return "Idle";
-    case "MOVING_UP":
-      return "Up";
-    case "MOVING_DOWN":
-      return "Down";
-    case "DOOR_OPEN":
-      return "Open";
-    case "DOOR_OPENING":
-      return "Opening";
-    case "DOOR_CLOSING":
-      return "Closing";
-    case "MAINTENANCE":
-      return "Maint.";
-    case "EMERGENCY_STOP":
-      return "E-Stop";
-    default:
-      return state;
-  }
+  return STATE_LABELS[state] ?? state;
 }
+
+// --- Component ---
 
 export function ElevatorShaft({
   elevator,
   maxFloor,
   onToggleMaintenance,
-  ridingPassengers = [],
 }: ElevatorShaftProps) {
   const floors = Array.from({ length: maxFloor }, (_, i) => maxFloor - i);
   const servedSet = elevator.servedFloors
     ? new Set(elevator.servedFloors)
     : null;
   const targetSet = new Set(elevator.targetFloors);
+  const ridingPassengers = useAppSelector(selectRidingByElevator(elevator.index));
 
   return (
     <Card className="w-36 flex-shrink-0">
-      <CardHeader className="px-3 py-2 space-y-1">
+      <CardHeader className="px-3 py-2 space-y-1 h-[5.5rem]">
         <CardTitle className="text-sm font-semibold text-center">
           {elevator.label}
         </CardTitle>
@@ -88,6 +81,7 @@ export function ElevatorShaft({
           </Badge>
         </div>
       </CardHeader>
+
       <CardContent className="px-3 pb-2 space-y-1">
         <div className="flex flex-col gap-0.5">
           {floors.map((floor) => {

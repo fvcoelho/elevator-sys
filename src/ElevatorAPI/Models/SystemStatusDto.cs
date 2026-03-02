@@ -5,4 +5,7 @@ public record SystemStatusDto(
     int PendingRequests,
     bool IsEmergencyStopped,
     string Algorithm,
+    int PeopleWaiting,
+    int PeopleInTransit,
+    long MemoryUsedBytes,
     List<ElevatorDto> Elevators);

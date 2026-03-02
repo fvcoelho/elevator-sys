@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -10,7 +11,7 @@ namespace ElevatorAPI.Services;
 public class WebSocketBroadcastService : BackgroundService
 {
     private readonly ConcurrentDictionary<string, WebSocket> _connections = new();
-    private readonly ElevatorSystem.ElevatorSystem _elevatorSystem;
+    private readonly ElevatorSystemHolder _holder;
     private readonly ILogger<WebSocketBroadcastService> _logger;
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -19,10 +20,10 @@ public class WebSocketBroadcastService : BackgroundService
     };
 
     public WebSocketBroadcastService(
-        ElevatorSystem.ElevatorSystem elevatorSystem,
+        ElevatorSystemHolder holder,
         ILogger<WebSocketBroadcastService> logger)
     {
-        _elevatorSystem = elevatorSystem;
+        _holder = holder;
         _logger = logger;
     }
 
@@ -62,12 +63,16 @@ public class WebSocketBroadcastService : BackgroundService
 
     private async Task BroadcastStatusAsync(CancellationToken cancellationToken)
     {
-        var elevators = StatusEndpoints.BuildElevatorDtos(_elevatorSystem);
+        var system = _holder.Current;
+        var elevators = StatusEndpoints.BuildElevatorDtos(system);
         var status = new SystemStatusDto(
-            _elevatorSystem.ElevatorCount,
-            _elevatorSystem.PendingRequestCount,
-            _elevatorSystem.IsEmergencyStopped,
-            _elevatorSystem.Algorithm.ToString(),
+            system.ElevatorCount,
+            system.PendingRequestCount,
+            system.IsEmergencyStopped,
+            system.Algorithm.ToString(),
+            system.PeopleWaiting,
+            system.PeopleInTransit,
+            Process.GetCurrentProcess().WorkingSet64,
             elevators);
 
         var json = JsonSerializer.Serialize(status, _jsonOptions);
