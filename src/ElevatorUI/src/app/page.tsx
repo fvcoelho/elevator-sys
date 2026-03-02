@@ -14,6 +14,7 @@ import {
   passengerAdded,
   passengersCleared,
   returnQueueConsumed,
+  requestLogEntryAdded,
 } from "@/store/slices/passengersSlice";
 import { StatusBar } from "@/components/status-bar";
 import { ElevatorShaft } from "@/components/elevator-shaft";
@@ -23,6 +24,7 @@ import { SystemConfig } from "@/components/system-config";
 import { BuildingView } from "@/components/building-view";
 import { DevTimeline } from "@/components/dev-timeline";
 import { WsPayloadViewer } from "@/components/ws-payload-viewer";
+import { RequestLog } from "@/components/request-log";
 
 const MAX_FLOOR = 20;
 
@@ -54,11 +56,18 @@ export default function Home() {
     const trips = [...returnQueue];
     dispatch(returnQueueConsumed());
     for (const trip of trips) {
-      requestRide({ pickupFloor: trip.fromFloor, destinationFloor: 1 }).catch(
-        () => {
+      requestRide({ pickupFloor: trip.fromFloor, destinationFloor: 1 })
+        .then((res) => {
+          dispatch(requestLogEntryAdded({
+            requestId: res.requestId,
+            name: trip.name,
+            pickupFloor: trip.fromFloor,
+            destinationFloor: 1,
+          }));
+        })
+        .catch(() => {
           // silently ignore return trip failure
-        }
-      );
+        });
     }
   }, [returnQueue, dispatch, requestRide]);
 
@@ -129,12 +138,7 @@ export default function Home() {
             onClearPassengers={() => dispatch(passengersCleared())}
           />
 
-          <TrafficGenerator
-            onRequestRide={requestRide}
-            onPassengerAdded={(name, pickupFloor, destinationFloor, requestId) =>
-              dispatch(passengerAdded({ name, pickupFloor, destinationFloor, requestId }))
-            }
-          />
+          <RequestLog />
 
           <WsPayloadViewer />
         </div>

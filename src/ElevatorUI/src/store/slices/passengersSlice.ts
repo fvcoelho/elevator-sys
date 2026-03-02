@@ -61,12 +61,22 @@ function checkArrival(
   );
 }
 
+// --- Request log ---
+
+export interface RequestLogEntry {
+  requestId?: number;
+  name: string;
+  pickupFloor: number;
+  destinationFloor: number;
+}
+
 // --- State ---
 
 interface PassengersState {
   passengers: Passenger[];
   nextId: number;
   returnQueue: ReturnTripRequest[];
+  requestLog: RequestLogEntry[];
 }
 
 // Always start empty — localStorage is loaded client-side after mount
@@ -75,6 +85,7 @@ const initialState: PassengersState = {
   passengers: [],
   nextId: 1,
   returnQueue: [],
+  requestLog: [],
 };
 
 // --- Thunk: schedule return trip ---
@@ -144,12 +155,21 @@ const passengersSlice = createSlice({
         requestId?: number;
       }>
     ) {
+      const { name, pickupFloor, destinationFloor, requestId } = action.payload;
       state.passengers.push({
         id: state.nextId++,
         ...action.payload,
         status: "waiting",
-        currentFloor: action.payload.pickupFloor,
+        currentFloor: pickupFloor,
       });
+      state.requestLog.push({ requestId, name, pickupFloor, destinationFloor });
+    },
+
+    requestLogEntryAdded(
+      state,
+      action: PayloadAction<RequestLogEntry>
+    ) {
+      state.requestLog.push(action.payload);
     },
 
     passengersCleared(state) {
@@ -161,6 +181,7 @@ const passengersSlice = createSlice({
 
       state.passengers = [];
       state.returnQueue = [];
+      state.requestLog = [];
     },
 
     // Pure sync: updates passenger statuses based on current elevator positions.
@@ -270,6 +291,7 @@ const passengersSlice = createSlice({
 
 export const {
   passengerAdded,
+  requestLogEntryAdded,
   passengersCleared,
   passengersSync,
   returnQueueConsumed,
@@ -289,6 +311,8 @@ export const selectPassengers = (state: PassengersRootState) =>
   state.passengers.passengers;
 export const selectReturnQueue = (state: PassengersRootState) =>
   state.passengers.returnQueue;
+export const selectRequestLog = (state: PassengersRootState) =>
+  state.passengers.requestLog;
 
 export const selectTotalPeople = createSelector(
   selectPassengers,

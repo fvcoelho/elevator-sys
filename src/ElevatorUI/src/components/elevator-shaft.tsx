@@ -118,6 +118,16 @@ export function ElevatorShaft({
         >
           {elevator.inMaintenance ? "Exit Maint." : "Maintenance"}
         </Button>
+
+        <a
+          href={`http://localhost:5081/api/logs/${elevator.label}`}
+          download={`elevator_${elevator.label}.log`}
+          className="block w-full mt-1"
+        >
+          <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground">
+            Download log
+          </Button>
+        </a>
       </CardContent>
     </Card>
   );

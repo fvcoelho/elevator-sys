@@ -90,6 +90,7 @@ api.MapRequestEndpoints();
 api.MapStatusEndpoints();
 api.MapMetricsEndpoints();
 api.MapControlEndpoints();
+api.MapLogEndpoints();
 
 app.Run();
 
