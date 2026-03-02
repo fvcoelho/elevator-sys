@@ -332,9 +332,9 @@ public class ElevatorSystemTests
     }
 
     [Fact]
-    public void AssignRequest_MultipleRequests_AddsInOrder()
+    public void AssignRequest_MultipleRequests_ReordersForDirectionAwareRouting()
     {
-        // Arrange
+        // Arrange: elevator 0 starts at floor 1 (3-elevator system: 1, 10, 20)
         var system = new ElevatorSystem(elevatorCount: 3, minFloor: 1, maxFloor: 20);
         var request1 = new Request(pickupFloor: 5, destinationFloor: 15);
         var request2 = new Request(pickupFloor: 8, destinationFloor: 12);
@@ -343,13 +343,15 @@ public class ElevatorSystemTests
         system.AssignRequest(0, request1);
         system.AssignRequest(0, request2);
 
-        // Assert - check system-level targets instead of elevator queue
+        // Assert - reorder produces direction-aware order: pick up both passengers going up,
+        // then drop off in ascending order — no direction reversal with passengers inside.
+        // Expected: 5 (pickup R1) → 8 (pickup R2) → 12 (dest R2) → 15 (dest R1)
         var targets = system.GetElevatorTargets(0).ToList();
         targets.Should().HaveCount(4);
-        targets[0].Should().Be(5);  // Request 1 pickup
-        targets[1].Should().Be(15); // Request 1 destination
-        targets[2].Should().Be(8);  // Request 2 pickup
-        targets[3].Should().Be(12); // Request 2 destination
+        targets[0].Should().Be(5);  // pickup request 1
+        targets[1].Should().Be(8);  // pickup request 2 (same direction, closer than dest 15)
+        targets[2].Should().Be(12); // destination request 2
+        targets[3].Should().Be(15); // destination request 1
     }
 
     [Fact]

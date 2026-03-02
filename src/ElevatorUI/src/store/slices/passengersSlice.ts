@@ -205,22 +205,41 @@ const passengersSlice = createSlice({
 
         // Waiting or returning → try to board
         if (p.status === "waiting" || p.status === "returning") {
-          const elevator = findBestElevator(
-            elevators,
-            p.currentFloor,
-            p.destinationFloor,
-            assignedCount
-          );
-          if (elevator) {
+          // Primary: match by requestId — more reliable than the floor heuristic.
+          // The backend puts the requestId in elevator.requestIds as soon as the
+          // request is dispatched, so we can directly identify the assigned elevator.
+          // We still require the elevator to be at the pickup floor in a stopped state
+          // so we don't show the passenger as "riding" before physical boarding.
+          let boardedElevator: ElevatorDto | undefined;
+          if (p.requestId !== undefined) {
+            boardedElevator = elevators.find(
+              (e) =>
+                e.requestIds.includes(p.requestId!) &&
+                e.currentFloor === p.currentFloor &&
+                DROPOFF_STATES.has(e.state)
+            );
+          }
+
+          // Fallback: heuristic match for passengers without a requestId
+          if (!boardedElevator) {
+            boardedElevator = findBestElevator(
+              elevators,
+              p.currentFloor,
+              p.destinationFloor,
+              assignedCount
+            );
+          }
+
+          if (boardedElevator) {
             changed = true;
             assignedCount.set(
-              elevator.index,
-              (assignedCount.get(elevator.index) || 0) + 1
+              boardedElevator.index,
+              (assignedCount.get(boardedElevator.index) || 0) + 1
             );
             state.passengers[i] = {
               ...p,
               status: "riding",
-              elevatorIndex: elevator.index,
+              elevatorIndex: boardedElevator.index,
             };
             continue;
           }

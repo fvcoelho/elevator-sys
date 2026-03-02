@@ -763,11 +763,10 @@ public class ElevatorSystem
             _elevatorTargets[elevatorIndex].Enqueue(request.DestinationFloor);
         }
 
-        // Custom algorithm reorders the target queue for optimal routing
-        if (Algorithm == DispatchAlgorithm.Custom)
-        {
-            ReorderElevatorTargets(elevatorIndex);
-        }
+        // Always reorder the target queue for direction-aware routing.
+        // Without this, new pickups are appended naively (pickup1, dest1, pickup2, dest2, ...)
+        // which causes the elevator to reverse direction with passengers already inside.
+        ReorderElevatorTargets(elevatorIndex);
 
         Console.WriteLine($"[DISPATCH] {request} → Elevator {GetElevatorLabel(elevatorIndex)} (at floor {elevator.CurrentFloor}, {elevator.State})");
     }
@@ -926,8 +925,11 @@ public class ElevatorSystem
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: Pickup complete at floor {reachedFloor}");
             }
 
-            // Check if this floor is the destination floor
-            if (reachedFloor == progress.DestinationFloor && !progress.DestinationReached)
+            // Check if this floor is the destination floor.
+            // Guard: only mark destination reached if the passenger was already picked up.
+            // Without this, a request assigned to an elevator already at the destination floor
+            // would mark delivery complete before ever visiting the pickup floor.
+            if (reachedFloor == progress.DestinationFloor && !progress.DestinationReached && progress.PickupReached)
             {
                 progress.DestinationReached = true;
                 progress.DestinationTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -1244,12 +1246,14 @@ public class ElevatorSystem
             var elevator = _elevators[elevatorIndex];
             var (order, _) = CalculateOptimalOrder(elevator.CurrentFloor, pairs);
 
-            // Deduplicate: a single stop satisfies all requests needing that floor
-            var seen = new HashSet<int>();
+            // Deduplicate consecutive stops only: if two adjacent entries are the same floor
+            // a single stop covers both (e.g. two pickups at the same floor → [5,5] → [5]).
+            // Do NOT remove non-consecutive duplicates — the same floor may legitimately appear
+            // twice in the route (e.g. [1, 5, 1]: drop off, go pick up, come back to drop off).
             var deduped = new List<int>();
             foreach (var floor in order)
             {
-                if (seen.Add(floor))
+                if (deduped.Count == 0 || deduped[^1] != floor)
                     deduped.Add(floor);
             }
 

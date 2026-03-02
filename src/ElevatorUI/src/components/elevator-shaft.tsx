@@ -4,8 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ElevatorDto } from "@/types/elevator";
-import { useAppSelector } from "@/hooks/use-app-selector";
-import { selectRidingByElevator } from "@/store/slices/passengersSlice";
 
 // --- Props ---
 
@@ -59,7 +57,6 @@ export function ElevatorShaft({
     ? new Set(elevator.servedFloors)
     : null;
   const targetSet = new Set(elevator.targetFloors);
-  const ridingPassengers = useAppSelector(selectRidingByElevator(elevator.index));
 
   return (
     <Card className="w-36 flex-shrink-0">
@@ -100,9 +97,9 @@ export function ElevatorShaft({
                 `}
               >
                 <span>{floor}</span>
-                {isCurrent && ridingPassengers.length > 0 && (
+                {isCurrent && elevator.requestIds.length > 0 && (
                   <span className="ml-1 truncate text-[10px] font-semibold">
-                    {ridingPassengers.map((p) => p.requestId !== undefined ? `${p.name} #${p.requestId}` : p.name).join(", ")}
+                    {elevator.requestIds.map((id) => `#${id}`).join(" ")}
                   </span>
                 )}
               </div>
