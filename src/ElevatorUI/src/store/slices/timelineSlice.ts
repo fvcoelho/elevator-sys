@@ -1,12 +1,13 @@
 import { createAction, createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import type { SystemStatusDto, Passenger, ReturnTripRequest } from "@/types/elevator";
+import type { WsStatus } from "./connectionSlice";
 
 // --- Snapshot type: full app state minus timeline itself ---
 
 export interface StateSnapshot {
   elevator: { status: SystemStatusDto | null; messageCount: number };
-  connection: { isConnected: boolean; wsStatus: string; backoffMs: number };
+  connection: { isConnected: boolean; wsStatus: WsStatus; backoffMs: number };
   passengers: { passengers: Passenger[]; nextId: number; returnQueue: ReturnTripRequest[] };
 }
 

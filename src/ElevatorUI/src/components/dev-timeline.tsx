@@ -33,7 +33,6 @@ function fmtTime(ts: number) {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-    // @ts-expect-error fractionalSecondDigits is valid in modern browsers
     fractionalSecondDigits: 2,
   });
 }

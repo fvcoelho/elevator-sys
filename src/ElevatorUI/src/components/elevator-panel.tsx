@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import type { CreateRequestDto, RequestResponseDto } from "@/types/elevator";
 import { randomName } from "@/lib/passenger-names";
+import { useAppSelector } from "@/hooks/use-app-selector";
+import { selectTotalPeople } from "@/store/slices/passengersSlice";
 
 // --- Props ---
 
@@ -23,7 +25,8 @@ interface ElevatorPanelProps {
     name: string,
     pickup: number,
     destination: number,
-    returnDelaySec?: number
+    returnDelaySec?: number,
+    requestId?: number
   ) => void;
   onClearPassengers?: () => void;
 }
@@ -63,6 +66,7 @@ export function ElevatorPanel({
   const [priority, setPriority] = useState("Normal");
   const [log, setLog] = useState<LogEntry[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const totalPeople = useAppSelector(selectTotalPeople);
 
   // Avoid SSR hydration mismatch — randomize after mount
   useEffect(() => {
@@ -99,7 +103,7 @@ export function ElevatorPanel({
         destinationFloor: destFloor,
         priority,
       });
-      onPassengerAdded?.(name, 1, destFloor, delaySec);
+      onPassengerAdded?.(name, 1, destFloor, delaySec, res.requestId);
       addLog(
         `${name} → #${res.requestId}: Lobby → F${res.destinationFloor} (${delaySec}s) → Lobby`,
         true
@@ -200,7 +204,7 @@ export function ElevatorPanel({
             variant="outline"
             size="default"
             className="shrink-0"
-            disabled={log.length === 0}
+            disabled={log.length === 0 && totalPeople === 0}
             onClick={() => {
               setLog([]);
               onClearPassengers?.();

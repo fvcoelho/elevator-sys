@@ -102,7 +102,7 @@ export function ElevatorShaft({
                 <span>{floor}</span>
                 {isCurrent && ridingPassengers.length > 0 && (
                   <span className="ml-1 truncate text-[10px] font-semibold">
-                    {ridingPassengers.map((p) => p.name).join(", ")}
+                    {ridingPassengers.map((p) => p.requestId !== undefined ? `${p.name} #${p.requestId}` : p.name).join(", ")}
                   </span>
                 )}
               </div>

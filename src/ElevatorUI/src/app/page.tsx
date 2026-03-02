@@ -22,6 +22,7 @@ import { TrafficGenerator } from "@/components/traffic-generator";
 import { SystemConfig } from "@/components/system-config";
 import { BuildingView } from "@/components/building-view";
 import { DevTimeline } from "@/components/dev-timeline";
+import { WsPayloadViewer } from "@/components/ws-payload-viewer";
 
 const MAX_FLOOR = 20;
 
@@ -122,18 +123,20 @@ export default function Home() {
 
           <ElevatorPanel
             onRequestRide={requestRide}
-            onPassengerAdded={(name, pickupFloor, destinationFloor, returnDelaySec) =>
-              dispatch(passengerAdded({ name, pickupFloor, destinationFloor, returnDelaySec }))
+            onPassengerAdded={(name, pickupFloor, destinationFloor, returnDelaySec, requestId) =>
+              dispatch(passengerAdded({ name, pickupFloor, destinationFloor, returnDelaySec, requestId }))
             }
             onClearPassengers={() => dispatch(passengersCleared())}
           />
 
           <TrafficGenerator
             onRequestRide={requestRide}
-            onPassengerAdded={(name, pickupFloor, destinationFloor) =>
-              dispatch(passengerAdded({ name, pickupFloor, destinationFloor }))
+            onPassengerAdded={(name, pickupFloor, destinationFloor, requestId) =>
+              dispatch(passengerAdded({ name, pickupFloor, destinationFloor, requestId }))
             }
           />
+
+          <WsPayloadViewer />
         </div>
       </div>
 

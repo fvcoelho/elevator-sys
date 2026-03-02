@@ -12,6 +12,7 @@ export interface Passenger {
   returnDelaySec?: number;
   arrivedAt?: number;
   elevatorIndex?: number;
+  requestId?: number;
 }
 
 export interface ReturnTripRequest {

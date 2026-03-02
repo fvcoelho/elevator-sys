@@ -100,7 +100,7 @@ interface LogEntry {
 
 interface TrafficGeneratorProps {
   onRequestRide: (dto: CreateRequestDto) => Promise<RequestResponseDto>;
-  onPassengerAdded?: (name: string, pickup: number, destination: number) => void;
+  onPassengerAdded?: (name: string, pickup: number, destination: number, requestId?: number) => void;
 }
 
 export function TrafficGenerator({ onRequestRide, onPassengerAdded }: TrafficGeneratorProps) {
@@ -138,11 +138,11 @@ export function TrafficGenerator({ onRequestRide, onPassengerAdded }: TrafficGen
         count++;
 
         try {
-          await onRequestRide({
+          const res = await onRequestRide({
             pickupFloor: pickup,
             destinationFloor: destination,
           });
-          onPassengerAdded?.(name, pickup, destination);
+          onPassengerAdded?.(name, pickup, destination, res.requestId);
           setLog((prev) => [
             { index: count, pickup, destination, ok: true },
             ...prev.slice(0, 49),
@@ -199,8 +199,8 @@ export function TrafficGenerator({ onRequestRide, onPassengerAdded }: TrafficGen
 
       // Send lobby -> floor
       try {
-        await onRequestRide({ pickupFloor: 1, destinationFloor: floor });
-        onPassengerAdded?.(name, 1, floor);
+        const res = await onRequestRide({ pickupFloor: 1, destinationFloor: floor });
+        onPassengerAdded?.(name, 1, floor, res.requestId);
         setLog((prev) => [
           { index: idx, pickup: 1, destination: floor, ok: true },
           ...prev.slice(0, 49),
@@ -227,11 +227,11 @@ export function TrafficGenerator({ onRequestRide, onPassengerAdded }: TrafficGen
         count++;
         const retIdx = count;
         try {
-          await onRequestRide({
+          const retRes = await onRequestRide({
             pickupFloor: capturedFloor,
             destinationFloor: 1,
           });
-          onPassengerAdded?.(capturedName, capturedFloor, 1);
+          onPassengerAdded?.(capturedName, capturedFloor, 1, retRes.requestId);
           setLog((prev) => [
             { index: retIdx, pickup: capturedFloor, destination: 1, ok: true },
             ...prev.slice(0, 49),

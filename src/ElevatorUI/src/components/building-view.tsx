@@ -60,7 +60,7 @@ export function BuildingView({ maxFloor, totalPeople, waitingLobby }: BuildingVi
   }, [passengers]);
 
   return (
-    <Card className="w-64 flex-shrink-0">
+    <Card className="w-96 flex-shrink-0">
       <CardHeader className="px-3 py-2 space-y-0.5 h-[5.5rem]">
         <CardTitle className="text-sm font-bold text-center">
           Building
@@ -89,6 +89,9 @@ export function BuildingView({ maxFloor, totalPeople, waitingLobby }: BuildingVi
                         <span className={`font-semibold ${passengerColor(p)}`}>
                           {p.name}
                         </span>
+                        {p.requestId !== undefined && (
+                          <span className="text-muted-foreground/60 text-[10px] ml-0.5">#{p.requestId}</span>
+                        )}
                         {formatCountdown(p, now) && (
                           <span className="text-muted-foreground ml-0.5">
                             {formatCountdown(p, now)}

@@ -141,18 +141,14 @@ const passengersSlice = createSlice({
         pickupFloor: number;
         destinationFloor: number;
         returnDelaySec?: number;
+        requestId?: number;
       }>
     ) {
-      const { name, pickupFloor, destinationFloor, returnDelaySec } =
-        action.payload;
       state.passengers.push({
         id: state.nextId++,
-        name,
-        pickupFloor,
-        destinationFloor,
+        ...action.payload,
         status: "waiting",
-        currentFloor: pickupFloor,
-        returnDelaySec,
+        currentFloor: action.payload.pickupFloor,
       });
     },
 
