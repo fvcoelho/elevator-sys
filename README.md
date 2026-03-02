@@ -59,6 +59,24 @@ A full-stack multi-elevator control system built with **.NET 8** (backend) and *
 
 ---
 
+## Quick Start
+
+```bash
+# 1. Run tests
+dotnet test
+
+# 2. Start application
+docker-compose up -d
+```
+
+| Service | URL |
+|---------|-----|
+| UI | http://localhost:3000 |
+| API | http://localhost:5081 |
+| Swagger | http://localhost:5081/swagger |
+
+---
+
 ## Getting Started
 
 ### Prerequisites
@@ -66,21 +84,22 @@ A full-stack multi-elevator control system built with **.NET 8** (backend) and *
 | Tool | Version |
 |------|---------|
 | .NET SDK | 8 or higher |
-| Node.js | 18 or higher |
-| npm | 9 or higher |
+| Docker | 24 or higher |
+| Node.js | 18 or higher *(local dev only)* |
+| npm | 9 or higher *(local dev only)* |
 
-### Clone & Build
+### Clone & Run
 
 ```bash
 git clone git@github.com:fvcoelho/elevator-sys.git
 cd elevator-sys
-dotnet build
 dotnet test
+docker-compose up -d
 ```
 
 ---
 
-## Running the System
+## Running Locally (without Docker)
 
 Open **three terminal windows**:
 
