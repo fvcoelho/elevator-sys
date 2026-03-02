@@ -77,10 +77,12 @@ export default function Home() {
       <h1 className="text-2xl font-bold">
         Elevator System
         <span className="text-base font-normal text-muted-foreground">
-          {" "}- powered by WebSocket and{" "}
+          {" "}- powered by{" "}
           <a href="http://localhost:5081/swagger" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
             REST API
           </a>
+          {" "}· WebSocket · Redux{" "}
+          <span className="text-xs">(record &amp; play)</span>
         </span>
       </h1>
 
