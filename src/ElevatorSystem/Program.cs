@@ -40,11 +40,13 @@ ElevatorConfig[] configs = PROFILE switch
     "Full2" => new[]
     {
         new ElevatorConfig { Label = "A",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
-        new ElevatorConfig { Label = "B",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
-        new ElevatorConfig { Label = "C",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
-        new ElevatorConfig { Label = "D",  InitialFloor = 10, Type = ElevatorType.Local,   Capacity = 10 },
-        new ElevatorConfig { Label = "E",  InitialFloor = 20, Type = ElevatorType.Express,
-            ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(15, 6)).ToHashSet(), Capacity = 12 },
+        new ElevatorConfig { Label = "B",  InitialFloor = 7,  Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "C",  InitialFloor = 14, Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "D",  InitialFloor = 20, Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "E1", InitialFloor = 1,  Type = ElevatorType.Express,
+            ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(11, 5)).ToHashSet(), Capacity = 12 },
+        new ElevatorConfig { Label = "E2", InitialFloor = 1,  Type = ElevatorType.Express,
+            ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(16, 5)).ToHashSet(), Capacity = 12 },
         new ElevatorConfig { Label = "F1", InitialFloor = 1,  Type = ElevatorType.Freight, Capacity = 20 },
     },
     _ => new[] // "Standard"

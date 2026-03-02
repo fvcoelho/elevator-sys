@@ -46,11 +46,15 @@ const DEFAULT_CONFIG: UpdateConfigDto = {
   floorTravelMs: 500,
   doorTransitionMs: 500,
   algorithm: "Custom",
-  vipFloors: [],
+  vipFloors: [13],
   elevators: [
-    { label: "Elevator A", initialFloor: 1, type: "Local", capacity: 10, servedFloors: null },
-    { label: "Elevator B", initialFloor: 10, type: "Local", capacity: 10, servedFloors: null },
-    { label: "Elevator C", initialFloor: 20, type: "Local", capacity: 10, servedFloors: null },
+    { label: "A",  initialFloor: 1,  type: "Local",   capacity: 10, servedFloors: null },
+    { label: "B",  initialFloor: 7,  type: "Local",   capacity: 10, servedFloors: null },
+    { label: "C",  initialFloor: 14, type: "Local",   capacity: 10, servedFloors: null },
+    { label: "D",  initialFloor: 20, type: "Local",   capacity: 10, servedFloors: null },
+    { label: "E1", initialFloor: 1,  type: "Express", capacity: 12, servedFloors: [1, 11, 12, 13, 14, 15] },
+    { label: "E2", initialFloor: 1,  type: "Express", capacity: 12, servedFloors: [1, 16, 17, 18, 19, 20] },
+    { label: "F1", initialFloor: 1,  type: "Freight", capacity: 20, servedFloors: null },
   ],
 };
 
