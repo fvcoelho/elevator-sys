@@ -153,11 +153,13 @@ Timing defaults: 500 ms door open · 500 ms per floor · 500 ms door transition.
 {
   "pickupFloor": 1,
   "destinationFloor": 13,
-  "priority": "Normal",        // "Normal" | "High"
-  "accessLevel": "Standard",   // "Standard" | "VIP"
-  "preferredElevatorType": null // "Local" | "Express" | "Freight" | null
+  "priority": "Normal",          // "Normal" | "High"
+  "accessLevel": "Standard",     // "Standard" | "VIP"
+  "preferredElevatorType": null  // "Local" | "Express" | "Freight" | null
 }
 ```
+
+> **Priority modes** — Normal: default · High: `priority=High` · VIP: `accessLevel=VIP` (auto-elevates to High) · Freight: `preferredElevatorType=Freight`
 
 ### Status & Elevators
 
@@ -200,15 +202,14 @@ Connect to `ws://localhost:5081/ws`. The server broadcasts a `SystemStatusDto` J
 
 | Component | Description |
 |-----------|-------------|
-| `elevator-shaft` | Per-elevator card: floors, state, passenger names, VIP/target highlights, maintenance toggle |
-| `building-view` | Floor-by-floor passenger view; VIP floors marked red dashed; lobby wraps multi-line |
-| `elevator-panel` | Request ride form: name, destination, return delay, priority |
-| `system-config` | Live reconfiguration: floors, timings, algorithm, VIP floors, add/remove elevators with express zone picker |
+| `elevator-shaft` | Per-elevator card: floors, state, passenger names (resolved from requestId), VIP/target highlights, maintenance toggle |
+| `building-view` | Floor-by-floor passenger view; VIP floors marked red dashed with legend; lobby row wraps multi-line |
+| `elevator-panel` | Round-trip ride form: name, floor, delay, split combo-button with 🎲 Random · Normal · High · VIP · Freight |
+| `system-config` | Live reconfiguration: floors, timings, algorithm, VIP floors, add/remove elevators, express zone picker (From/To) |
 | `status-bar` | Connection badge, message counter, emergency stop, algorithm selector, metrics popup |
-| `request-log` | Scrollable log of all passenger requests with requestId |
+| `request-log` | Scrollable ride history with requestId, passenger name, route, and priority badge (High/VIP/Freight) |
 | `traffic-generator` | Batch-generate random passenger traffic |
-| `ws-payload-viewer` | Debug panel showing raw WebSocket JSON |
-| `dev-timeline` | Time-travel: record and scrub up to 300 state snapshots |
+| `dev-timeline` | Time-travel: record and scrub up to 300 state snapshots (record & play) |
 
 ---
 
@@ -232,13 +233,13 @@ store/
 ### Passenger Lifecycle
 
 ```
-passengerAdded (waiting)
+passengerAdded (waiting, priorityMode stored)
     → websocketMiddleware detects elevator at pickup floor with matching requestId
     → status: riding  (elevatorIndex assigned)
     → elevator reaches destination floor
     → status: arrived
     → scheduleReturnTrip() fires after returnDelaySec
-    → status: returning  →  new API request back to lobby  →  waiting again
+    → status: returning  →  new API request back to lobby (same priority)  →  waiting again
 ```
 
 ---
@@ -253,6 +254,24 @@ passengerAdded (waiting)
 | **Custom** | Dynamic queue reordering for optimal multi-stop routes |
 
 High-priority requests bypass idle preference and compete with all elevators.
+
+---
+
+## Docker
+
+```bash
+docker-compose up -d        # start all services
+docker-compose down         # stop all services
+docker-compose logs -f api  # follow API logs
+docker-compose logs -f ui   # follow UI logs
+```
+
+| Image | Base | Port |
+|-------|------|------|
+| `elevator-api` | `mcr.microsoft.com/dotnet/aspnet:8.0` | 5081 |
+| `elevator-ui` | `node:20-alpine` (Next.js standalone) | 3000 |
+
+The API image includes `curl` for the healthcheck. The UI starts only after the API reports healthy.
 
 ---
 
@@ -272,6 +291,7 @@ elevator-sys/
 │   │   └── Program.cs           # Interactive CLI
 │   │
 │   ├── ElevatorAPI/             # REST API + WebSocket server (.NET 8)
+│   │   ├── Dockerfile           # Multi-stage build (sdk:8.0 → aspnet:8.0)
 │   │   ├── Endpoints/           # Mapped endpoint groups
 │   │   ├── Models/              # DTOs (request, status, config, metrics)
 │   │   ├── Services/            # WebSocketBroadcastService, SystemRunnerService,
@@ -280,6 +300,7 @@ elevator-sys/
 │   │   └── appsettings.json     # Default system config
 │   │
 │   └── ElevatorUI/              # Next.js 15 frontend
+│       ├── Dockerfile           # Multi-stage build (node:20-alpine, standalone)
 │       └── src/
 │           ├── app/             # Next.js app router (page.tsx, layout.tsx)
 │           ├── components/      # React components (UI + shadcn)
@@ -290,6 +311,7 @@ elevator-sys/
 │
 ├── tests/
 │   └── ElevatorSystem.Tests/    # 134 unit + integration tests (xUnit)
+├── docker-compose.yml
 ├── docs/                        # Specs and implementation plans
 └── ElevatorSystem.sln
 ```
