@@ -82,7 +82,7 @@ export default function Home() {
         Elevator System
         <span className="text-base font-normal text-muted-foreground">
           {" "}- powered by{" "}
-          <a href="http://localhost:5081/swagger" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
+          <a href={(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5081") + "/swagger"} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
             REST API
           </a>
           {" "}· WebSocket · Redux{" "}
