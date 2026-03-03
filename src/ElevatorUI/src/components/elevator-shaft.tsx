@@ -74,7 +74,7 @@ export function ElevatorShaft({
 
   return (
     <Card className="w-36 flex-shrink-0">
-      <CardHeader className="px-3 py-2 space-y-1 min-h-[5.5rem]">
+      <CardHeader className="px-3 py-2 space-y-1 h-[6.5rem]">
         <CardTitle className="text-sm font-semibold text-center">
           {elevator.label}
         </CardTitle>
