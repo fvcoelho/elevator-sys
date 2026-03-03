@@ -5,7 +5,7 @@ import { useAppSelector } from "@/hooks/use-app-selector";
 import { useAppDispatch } from "@/hooks/use-app-dispatch";
 import { useElevatorApi } from "@/hooks/use-elevator-api";
 import type { ElevatorDto } from "@/types/elevator";
-import { selectStatus, selectMessageCount, selectIsEmergencyStopped, selectAlgorithm, selectVipFloors } from "@/store/slices/elevatorSlice";
+import { selectStatus, selectMessageCount, selectIsEmergencyStopped, selectAlgorithm, selectVipFloors, statusCleared } from "@/store/slices/elevatorSlice";
 import { selectIsConnected } from "@/store/slices/connectionSlice";
 import {
   selectReturnQueue,
@@ -16,10 +16,10 @@ import {
   returnQueueConsumed,
   requestLogEntryAdded,
 } from "@/store/slices/passengersSlice";
+import { timelineCleared } from "@/store/slices/timelineSlice";
 import { StatusBar } from "@/components/status-bar";
 import { ElevatorShaft } from "@/components/elevator-shaft";
 import { ElevatorPanel } from "@/components/elevator-panel";
-import { TrafficGenerator } from "@/components/traffic-generator";
 import { SystemConfig } from "@/components/system-config";
 import { BuildingView } from "@/components/building-view";
 import { DevTimeline } from "@/components/dev-timeline";
@@ -48,7 +48,15 @@ export default function Home() {
     getMetrics,
     updateConfig,
     addElevator,
+    resetServer,
   } = useElevatorApi();
+
+  const handleResetServer = async () => {
+    await resetServer();
+    dispatch(passengersCleared());
+    dispatch(statusCleared());
+    dispatch(timelineCleared());
+  };
 
   // Process return trips — passengers whose delay expired after arrival
   useEffect(() => {
@@ -77,16 +85,15 @@ export default function Home() {
   }, [returnQueue, dispatch, requestRide]);
 
   return (
-    <div className="min-h-screen bg-background p-4 pb-20 space-y-4">
-      <h1 className="text-2xl font-bold">
+    <div className="min-h-screen bg-background px-6 pb-20 pt-4 space-y-6">
+      <h1 className="text-2xl font-bold tracking-tight">
         Elevator System
-        <span className="text-base font-normal text-muted-foreground">
-          {" "}- powered by{" "}
+        <span className="text-xl font-normal text-muted-foreground">
+          {" "}- Powered by{" "}
           <a href={(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5081") + "/swagger"} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground transition-colors">
             REST API
           </a>
-          {" "}· WebSocket · Redux{" "}
-          <span className="text-xs">(record &amp; play)</span>
+          {" "}· WebSocket · Redux {" "} (record &amp; play)
         </span>
       </h1>
 
@@ -100,11 +107,14 @@ export default function Home() {
         currentAlgorithm={currentAlgorithm}
         onSetAlgorithm={setAlgorithm}
         onGetMetrics={getMetrics}
+        onResetServer={handleResetServer}
       />
 
       <div className="flex gap-4">
         {/* Elevator shafts + Building view */}
-        <div className="flex gap-3 overflow-x-auto flex-1 items-start">
+        <div className="flex-1 min-w-0 space-y-2">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Elevator Shafts</h2>
+          <div className="flex gap-3 overflow-x-auto items-start">
           {status?.elevators.map((elevator: ElevatorDto) => (
             <ElevatorShaft
               key={elevator.index}
@@ -129,10 +139,12 @@ export default function Home() {
               Connecting to elevator system...
             </div>
           )}
+          </div>
         </div>
 
         {/* Controls sidebar */}
-        <div className="w-80 flex-shrink-0 space-y-4">
+        <aside className="w-80 flex-shrink-0 space-y-4">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Controls</h2>
           <SystemConfig
             status={status}
             onUpdateConfig={updateConfig}
@@ -149,7 +161,7 @@ export default function Home() {
 
           <RequestLog />
 
-        </div>
+        </aside>
       </div>
 
       <DevTimeline />

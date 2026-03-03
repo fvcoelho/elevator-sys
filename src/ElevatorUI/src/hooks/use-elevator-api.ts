@@ -77,6 +77,12 @@ export function useElevatorApi() {
     });
   }, []);
 
+  const resetServer = useCallback(async () => {
+    return apiFetch<{ message: string }>("/reset", {
+      method: "POST",
+    });
+  }, []);
+
   return {
     requestRide,
     emergencyStop,
@@ -86,5 +92,6 @@ export function useElevatorApi() {
     getMetrics,
     updateConfig,
     addElevator,
+    resetServer,
   };
 }

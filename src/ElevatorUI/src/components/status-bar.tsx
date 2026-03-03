@@ -35,6 +35,7 @@ interface StatusBarProps {
   currentAlgorithm: string;
   onSetAlgorithm: (alg: DispatchAlgorithm) => Promise<unknown>;
   onGetMetrics: () => Promise<MetricsDto>;
+  onResetServer: () => Promise<unknown>;
 }
 
 export function StatusBar({
@@ -47,6 +48,7 @@ export function StatusBar({
   currentAlgorithm,
   onSetAlgorithm,
   onGetMetrics,
+  onResetServer,
 }: StatusBarProps) {
   const [blink, setBlink] = useState(false);
   const prevCount = useRef(messageCount);
@@ -76,53 +78,55 @@ export function StatusBar({
 
   return (
     <Card>
-      <CardContent className="flex items-center gap-4 py-3">
-        <Badge
-          variant={isConnected ? "default" : "destructive"}
-          className={`transition-opacity duration-150 ${blink ? "opacity-40" : "opacity-100"}`}
-        >
-          {isConnected ? "Connected" : "Disconnected"}
-        </Badge>
+      <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+        <div className="inline-flex items-center gap-4">
+          <Badge
+            variant={isConnected ? "default" : "destructive"}
+            className={`transition-opacity duration-150 ${blink ? "opacity-40" : "opacity-100"}`}
+          >
+            {isConnected ? "Connected" : "Disconnected"}
+          </Badge>
 
-        <Separator orientation="vertical" className="h-5" />
-
-        {status ? (
-          <>
+          {status && (
             <span className="text-sm text-muted-foreground">
               Elevators:{" "}
               <span className="font-medium text-foreground">
                 {status.elevatorCount}
               </span>
             </span>
+          )}
+        </div>
 
-            <Separator orientation="vertical" className="h-5" />
+        <Separator orientation="vertical" className="h-5 hidden sm:block" />
 
-            <Select
-              value={currentAlgorithm}
-              onValueChange={(v) => onSetAlgorithm(v as DispatchAlgorithm)}
-            >
-              <SelectTrigger className="h-7 w-[120px] text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Simple">Simple</SelectItem>
-                <SelectItem value="SCAN">SCAN</SelectItem>
-                <SelectItem value="LOOK">LOOK</SelectItem>
-                <SelectItem value="Custom">Custom</SelectItem>
-              </SelectContent>
-            </Select>
+        {status ? (
+          <>
+            <div className="inline-flex items-center gap-4">
+              <Select
+                value={currentAlgorithm}
+                onValueChange={(v) => onSetAlgorithm(v as DispatchAlgorithm)}
+              >
+                <SelectTrigger className="h-7 w-[120px] text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Simple">Simple</SelectItem>
+                  <SelectItem value="SCAN">SCAN</SelectItem>
+                  <SelectItem value="LOOK">LOOK</SelectItem>
+                  <SelectItem value="Custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Separator orientation="vertical" className="h-5" />
-
-            <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
-              <MemoryStick className="h-3.5 w-3.5" />
-              Memory:{" "}
-              <span className="font-medium text-foreground">
-                {formatBytes(status.memoryUsedBytes)}
+              <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
+                <MemoryStick className="h-3.5 w-3.5" />
+                Memory:{" "}
+                <span className="font-medium text-foreground">
+                  {formatBytes(status.memoryUsedBytes)}
+                </span>
               </span>
-            </span>
+            </div>
 
-            <Separator orientation="vertical" className="h-5" />
+            <Separator orientation="vertical" className="h-5 hidden sm:block" />
 
             <Popover>
               <PopoverTrigger asChild>
@@ -201,9 +205,17 @@ export function StatusBar({
               </PopoverContent>
             </Popover>
 
-            <Separator orientation="vertical" className="h-5" />
+            <Separator orientation="vertical" className="h-5 hidden sm:block" />
 
             <div className="flex gap-1.5 ml-auto">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-7 text-sm"
+                onClick={() => onResetServer()}
+              >
+                Reset
+              </Button>
               <Button
                 variant="destructive"
                 size="sm"

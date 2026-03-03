@@ -63,7 +63,7 @@ export function BuildingView({ maxFloor, totalPeople, waitingLobby, vipFloors = 
 
   return (
     <Card className="w-96 flex-shrink-0">
-      <CardHeader className="px-3 py-2 space-y-0.5 h-[5.5rem]">
+      <CardHeader className="px-3 py-2 space-y-0.5 min-h-[5.5rem]">
         <CardTitle className="text-sm font-bold text-center">
           Building
         </CardTitle>
