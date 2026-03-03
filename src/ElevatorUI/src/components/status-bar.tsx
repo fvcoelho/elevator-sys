@@ -102,6 +102,7 @@ export function StatusBar({
         {status ? (
           <>
             <div className="inline-flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">Dispatcher:</span>
               <Select
                 value={currentAlgorithm}
                 onValueChange={(v) => onSetAlgorithm(v as DispatchAlgorithm)}
