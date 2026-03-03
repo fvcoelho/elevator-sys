@@ -1,0 +1,44 @@
+services:
+  # Elevator REST API + WebSocket server
+  api:
+    build:
+      context: .
+      dockerfile: src/ElevatorAPI/Dockerfile
+    container_name: elevator-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+    ports:
+      - "5081:8080"
+    networks:
+      - elevator-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Next.js UI
+  ui:
+    build:
+      context: src/ElevatorUI
+      dockerfile: Dockerfile
+    container_name: elevator-ui
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:5081
+      - NEXT_PUBLIC_WS_URL=ws://localhost:5081
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - elevator-network
+    restart: unless-stopped
+
+networks:
+  elevator-network:
+    driver: bridge

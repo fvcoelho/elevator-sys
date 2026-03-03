@@ -12,6 +12,7 @@ public class Elevator
     private readonly object _maintenanceLock = new();
     private bool _emergencyStop;
     private readonly object _emergencyStopLock = new();
+    private static readonly Random _random = new();
 
     public int MinFloor { get; }
     public int MaxFloor { get; }
@@ -22,6 +23,11 @@ public class Elevator
     public ElevatorType Type { get; }
     public HashSet<int> ServedFloors { get; }
     public int Capacity { get; }
+    public int[] ActiveRequestIds { get; set; } = Array.Empty<int>();
+
+    private string RequestIdsLog => ActiveRequestIds.Length > 0
+        ? string.Join(",", ActiveRequestIds)
+        : "-";
 
     public bool InMaintenance
     {
@@ -77,7 +83,7 @@ public class Elevator
         int floorTravelMs,
         string label = "",
         ILogger? logger = null,
-        int doorTransitionMs = 1000,
+        int doorTransitionMs = 500,
         ElevatorType type = ElevatorType.Local,
         HashSet<int>? servedFloors = null,
         int capacity = 10)
@@ -134,7 +140,7 @@ public class Elevator
             _currentFloor++;
         }
 
-        _logger?.LogInformation("State: MOVING_UP | Floor: {Floor}", CurrentFloor);
+        _logger?.LogInformation("State: MOVING_UP | Floor: {Floor} | Requests: [{Requests}]", CurrentFloor, RequestIdsLog);
     }
 
     public async Task MoveDown()
@@ -155,17 +161,17 @@ public class Elevator
             _currentFloor--;
         }
 
-        _logger?.LogInformation("State: MOVING_DOWN | Floor: {Floor}", CurrentFloor);
+        _logger?.LogInformation("State: MOVING_DOWN | Floor: {Floor} | Requests: [{Requests}]", CurrentFloor, RequestIdsLog);
     }
 
     public async Task OpenDoor()
     {
         State = ElevatorState.DOOR_OPENING;
-        _logger?.LogInformation("State: DOOR_OPENING | Floor: {Floor}", CurrentFloor);
+        _logger?.LogInformation("State: DOOR_OPENING | Floor: {Floor} | Requests: [{Requests}]", CurrentFloor, RequestIdsLog);
         await Task.Delay(DoorTransitionMs);
 
         State = ElevatorState.DOOR_OPEN;
-        _logger?.LogInformation("State: DOOR_OPEN | Floor: {Floor}", CurrentFloor);
+        _logger?.LogInformation("State: DOOR_OPEN | Floor: {Floor} | Requests: [{Requests}]", CurrentFloor, RequestIdsLog);
         await Task.Delay(DoorOpenMs);
     }
 
@@ -179,12 +185,12 @@ public class Elevator
         else
         {
             State = ElevatorState.DOOR_CLOSING;
-            _logger?.LogInformation("State: DOOR_CLOSING | Floor: {Floor}", CurrentFloor);
+            _logger?.LogInformation("State: DOOR_CLOSING | Floor: {Floor} | Requests: [{Requests}]", CurrentFloor, RequestIdsLog);
             await Task.Delay(DoorTransitionMs);
         }
 
         State = ElevatorState.IDLE;
-        _logger?.LogInformation("State: IDLE | Arrived at floor {Floor}", CurrentFloor);
+        _logger?.LogInformation("State: IDLE | Arrived at floor {Floor} | Requests: [{Requests}]", CurrentFloor, RequestIdsLog);
 
         if (_emergencyStop)
         {

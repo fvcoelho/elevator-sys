@@ -21,5 +21,11 @@ public enum DispatchAlgorithm
     /// LOOK algorithm (elevator reverses when no more requests in current direction)
     /// More efficient than SCAN for typical elevator usage patterns
     /// </summary>
-    LOOK
+    LOOK,
+
+    /// <summary>
+    /// Custom dynamic dispatcher: simulates total travel distance with optimal ordering,
+    /// then reorders the elevator's target queue using greedy nearest-neighbor with precedence constraints
+    /// </summary>
+    Custom
 }

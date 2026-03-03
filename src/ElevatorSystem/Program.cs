@@ -3,8 +3,8 @@ using ElevatorSystem;
 // Configuration Constants
 const int MIN_FLOOR = 1;
 const int MAX_FLOOR = 20;            // Extended from 10 to 20
-const int DOOR_OPEN_MS = 3000;       // 3 seconds
-const int FLOOR_TRAVEL_MS = 1500;    // 1.5 seconds per floor
+const int DOOR_OPEN_MS = 500;       // 3 seconds
+const int FLOOR_TRAVEL_MS = 500;    // 1.5 seconds per floor
 const string REQUESTS_DIR = "requests";   // Directory for pending requests
 const string PROCESSED_DIR = "processed"; // Directory for processed requests
 
@@ -18,7 +18,7 @@ int[] VIP_FLOORS = { 13 };
 //   Standard  → [Local, Local, Local]             3 elevators, all floors
 //   Mixed     → [Local, Local, Express]           2 local + 1 express (lobby + floors 15-20)
 //   Full      → [Local, Local, Express, Freight]  2 local + 1 express + 1 freight (capacity 20)
-const string PROFILE = "Full";
+const string PROFILE = "Full2";
 
 ElevatorConfig[] configs = PROFILE switch
 {
@@ -37,6 +37,18 @@ ElevatorConfig[] configs = PROFILE switch
             ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(15, 6)).ToHashSet(), Capacity = 12 },
         new ElevatorConfig { Label = "F1", InitialFloor = 1,  Type = ElevatorType.Freight, Capacity = 20 },
     },
+    "Full2" => new[]
+    {
+        new ElevatorConfig { Label = "A",  InitialFloor = 1,  Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "B",  InitialFloor = 7,  Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "C",  InitialFloor = 14, Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "D",  InitialFloor = 20, Type = ElevatorType.Local,   Capacity = 10 },
+        new ElevatorConfig { Label = "E1", InitialFloor = 1,  Type = ElevatorType.Express,
+            ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(11, 5)).ToHashSet(), Capacity = 12 },
+        new ElevatorConfig { Label = "E2", InitialFloor = 1,  Type = ElevatorType.Express,
+            ServedFloors = new HashSet<int> { 1 }.Union(Enumerable.Range(16, 5)).ToHashSet(), Capacity = 12 },
+        new ElevatorConfig { Label = "F1", InitialFloor = 1,  Type = ElevatorType.Freight, Capacity = 20 },
+    },
     _ => new[] // "Standard"
     {
         new ElevatorConfig { Label = "A", InitialFloor = 1,  Type = ElevatorType.Local, Capacity = 10 },
@@ -51,7 +63,7 @@ var system = new ElevatorSystem.ElevatorSystem(
     maxFloor: MAX_FLOOR,
     doorOpenMs: DOOR_OPEN_MS,
     floorTravelMs: FLOOR_TRAVEL_MS,
-    doorTransitionMs: 1000,
+    doorTransitionMs: 500,
     elevatorConfigs: configs);
 
 // Apply VIP floor restrictions
@@ -238,8 +250,9 @@ while (true)
             Console.WriteLine("  [1] Simple (closest + idle preference)");
             Console.WriteLine("  [2] SCAN (direction-aware, +100 bonus)");
             Console.WriteLine("  [3] LOOK (balanced, reverses at last request)");
+            Console.WriteLine("  [4] Custom (dynamic queue reordering, optimal routes)");
             Console.WriteLine($"\nCurrent: {system.Algorithm}");
-            Console.Write("\nSelect algorithm [1-3]: ");
+            Console.Write("\nSelect algorithm [1-4]: ");
 
             var algoKey = Console.ReadKey(intercept: true);
             Console.WriteLine(); // New line after key press
@@ -257,6 +270,10 @@ while (true)
                 case '3':
                     system.Algorithm = ElevatorSystem.DispatchAlgorithm.LOOK;
                     Console.WriteLine("✓ Switched to LOOK algorithm");
+                    break;
+                case '4':
+                    system.Algorithm = ElevatorSystem.DispatchAlgorithm.Custom;
+                    Console.WriteLine("✓ Switched to Custom algorithm");
                     break;
                 default:
                     Console.WriteLine("✗ Invalid selection - keeping current algorithm");

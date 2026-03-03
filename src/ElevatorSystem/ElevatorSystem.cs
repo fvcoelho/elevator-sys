@@ -20,6 +20,15 @@ internal class RequestProgress
     public long? DestinationTimestamp { get; set; }
 }
 
+public class PairState
+{
+    public int PickupFloor { get; set; }
+    public int DestinationFloor { get; set; }
+    public bool PickupAlreadyReached { get; set; }
+    public bool PickupVisited { get; set; }
+    public bool DestinationVisited { get; set; }
+}
+
 public class ElevatorSystem
 {
     // Dispatch algorithm scoring constants
@@ -63,7 +72,13 @@ public class ElevatorSystem
     public DispatchAlgorithm Algorithm { get; set; } = DispatchAlgorithm.Simple;
     public bool IsEmergencyStopped => _elevators.Any(e => e.InEmergencyStop);
 
-    public ElevatorSystem(int elevatorCount, int minFloor, int maxFloor, int doorOpenMs = 3000, int floorTravelMs = 1500, int doorTransitionMs = 1000)
+    /// <summary>People waiting for pickup (request dispatched but pickup not yet reached).</summary>
+    public int PeopleWaiting => _activeRequests.Values.Count(p => !p.PickupReached);
+
+    /// <summary>People riding inside elevators (picked up but not yet delivered).</summary>
+    public int PeopleInTransit => _activeRequests.Values.Count(p => p.PickupReached && !p.DestinationReached);
+
+    public ElevatorSystem(int elevatorCount, int minFloor, int maxFloor, int doorOpenMs = 500, int floorTravelMs = 500, int doorTransitionMs = 500)
         : this(minFloor, maxFloor, doorOpenMs, floorTravelMs, doorTransitionMs, CreateDefaultElevatorConfigs(elevatorCount, minFloor, maxFloor))
     {
     }
@@ -76,11 +91,11 @@ public class ElevatorSystem
         int doorTransitionMs,
         ElevatorConfig[] elevatorConfigs)
     {
-        if (elevatorConfigs == null || elevatorConfigs.Length < 1 || elevatorConfigs.Length > 5)
+        if (elevatorConfigs == null || elevatorConfigs.Length < 1 || elevatorConfigs.Length > 10)
         {
             throw new ArgumentOutOfRangeException(
                 nameof(elevatorConfigs),
-                "Elevator count must be between 1 and 5");
+                "Elevator count must be between 1 and 10");
         }
 
         if (minFloor >= maxFloor)
@@ -478,6 +493,7 @@ public class ElevatorSystem
             DispatchAlgorithm.Simple => FindBestElevatorSimple(request),
             DispatchAlgorithm.SCAN => FindBestElevatorScan(request),
             DispatchAlgorithm.LOOK => FindBestElevatorLook(request),
+            DispatchAlgorithm.Custom => FindBestElevatorCustom(request),
             _ => FindBestElevatorSimple(request)
         };
     }
@@ -737,6 +753,7 @@ public class ElevatorSystem
         progress.PendingFloors.Enqueue(request.DestinationFloor);
 
         _activeRequests[request.RequestId] = progress;
+        elevator.ActiveRequestIds = GetActiveRequestIdsForElevator(elevatorIndex);
 
         // Add pickup floor first, then destination floor to system-level target queue
         // This ensures the elevator goes to pickup the passenger before going to their destination
@@ -745,6 +762,11 @@ public class ElevatorSystem
             _elevatorTargets[elevatorIndex].Enqueue(request.PickupFloor);
             _elevatorTargets[elevatorIndex].Enqueue(request.DestinationFloor);
         }
+
+        // Always reorder the target queue for direction-aware routing.
+        // Without this, new pickups are appended naively (pickup1, dest1, pickup2, dest2, ...)
+        // which causes the elevator to reverse direction with passengers already inside.
+        ReorderElevatorTargets(elevatorIndex);
 
         Console.WriteLine($"[DISPATCH] {request} → Elevator {GetElevatorLabel(elevatorIndex)} (at floor {elevator.CurrentFloor}, {elevator.State})");
     }
@@ -755,10 +777,18 @@ public class ElevatorSystem
         for (int i = 0; i < _elevators.Count; i++)
         {
             var index = i;
-            var task = ProcessElevatorAsync(index, cancellationToken);
-            _elevatorTasks.Add(task);
+            _elevatorTasks.Add(ProcessElevatorAsync(index, cancellationToken));
         }
 
+        // Run the dispatch loop
+        await ProcessDispatchLoopAsync(cancellationToken);
+
+        // Wait for all elevator tasks to complete
+        await Task.WhenAll(_elevatorTasks);
+    }
+
+    public async Task ProcessDispatchLoopAsync(CancellationToken cancellationToken = default)
+    {
         // Main dispatcher loop - process incoming requests with priority sorting
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -807,12 +837,9 @@ public class ElevatorSystem
             // Small delay to prevent tight loop
             await Task.Delay(REQUEST_LOOP_DELAY_MS, cancellationToken);
         }
-
-        // Wait for all elevator tasks to complete
-        await Task.WhenAll(_elevatorTasks);
     }
 
-    private async Task ProcessElevatorAsync(int elevatorIndex, CancellationToken cancellationToken)
+    public async Task ProcessElevatorAsync(int elevatorIndex, CancellationToken cancellationToken)
     {
         var elevator = _elevators[elevatorIndex];
         var elevatorLabel = GetElevatorLabel(elevatorIndex);
@@ -898,8 +925,11 @@ public class ElevatorSystem
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: Pickup complete at floor {reachedFloor}");
             }
 
-            // Check if this floor is the destination floor
-            if (reachedFloor == progress.DestinationFloor && !progress.DestinationReached)
+            // Check if this floor is the destination floor.
+            // Guard: only mark destination reached if the passenger was already picked up.
+            // Without this, a request assigned to an elevator already at the destination floor
+            // would mark delivery complete before ever visiting the pickup floor.
+            if (reachedFloor == progress.DestinationFloor && !progress.DestinationReached && progress.PickupReached)
             {
                 progress.DestinationReached = true;
                 progress.DestinationTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -911,6 +941,7 @@ public class ElevatorSystem
             {
                 _completedRequestIds.Add(progress.RequestId);
                 _activeRequests.TryRemove(progress.RequestId, out _);
+                _elevators[elevatorIndex].ActiveRequestIds = GetActiveRequestIdsForElevator(elevatorIndex);
                 Console.WriteLine($"[TRACKING] Request #{progress.RequestId}: FULLY COMPLETE");
 
                 // Track performance metrics
@@ -960,6 +991,273 @@ public class ElevatorSystem
                 return queue.ToArray();
             }
             return Array.Empty<int>();
+        }
+    }
+
+    public int[] GetActiveRequestIdsForElevator(int elevatorIndex)
+    {
+        return _activeRequests.Values
+            .Where(p => p.AssignedElevatorIndex == elevatorIndex)
+            .Select(p => p.RequestId)
+            .ToArray();
+    }
+
+    public static (List<int> Order, int TotalDistance) CalculateOptimalOrder(
+        int currentFloor, List<PairState> pairs)
+    {
+        var order = new List<int>();
+        int totalDistance = 0;
+        int position = currentFloor;
+
+        // Total floors to visit: for each pair, pickup (if not already reached) + destination
+        int totalToVisit = 0;
+        foreach (var p in pairs)
+        {
+            if (!p.PickupAlreadyReached) totalToVisit++;
+            totalToVisit++;
+        }
+
+        // Determine initial travel direction from passengers already inside.
+        // If any passenger is already picked up, infer direction from their destinations.
+        int direction = 0; // 0 = undetermined, 1 = up, -1 = down
+        foreach (var p in pairs)
+        {
+            if (p.PickupAlreadyReached && !p.DestinationVisited)
+            {
+                direction = p.DestinationFloor > currentFloor ? 1 : -1;
+                break;
+            }
+        }
+
+        for (int step = 0; step < totalToVisit; step++)
+        {
+            int bestFloor = -1;
+            int bestDistance = int.MaxValue;
+            PairState? bestPair = null;
+            bool bestIsPickup = false;
+
+            // When passengers are inside the elevator, prioritize their destinations
+            // and same-direction pickups before allowing a direction reversal.
+            bool hasPassengersInside = false;
+            foreach (var p in pairs)
+            {
+                if ((p.PickupAlreadyReached || p.PickupVisited) && !p.DestinationVisited)
+                {
+                    hasPassengersInside = true;
+                    break;
+                }
+            }
+
+            foreach (var p in pairs)
+            {
+                // Consider unvisited pickup floors
+                if (!p.PickupAlreadyReached && !p.PickupVisited)
+                {
+                    int dist = Math.Abs(position - p.PickupFloor);
+
+                    // If passengers are inside and we have a direction, only consider
+                    // pickups that are in the same direction (no reversal with passengers)
+                    if (hasPassengersInside && direction != 0)
+                    {
+                        bool sameDirection = direction > 0
+                            ? p.PickupFloor >= position
+                            : p.PickupFloor <= position;
+                        if (!sameDirection) continue;
+                    }
+
+                    if (dist < bestDistance)
+                    {
+                        bestDistance = dist;
+                        bestFloor = p.PickupFloor;
+                        bestPair = p;
+                        bestIsPickup = true;
+                    }
+                }
+
+                // Consider destination floors whose pickup has been visited or was already reached
+                if (!p.DestinationVisited &&
+                    (p.PickupVisited || p.PickupAlreadyReached))
+                {
+                    int dist = Math.Abs(position - p.DestinationFloor);
+                    if (dist < bestDistance)
+                    {
+                        bestDistance = dist;
+                        bestFloor = p.DestinationFloor;
+                        bestPair = p;
+                        bestIsPickup = false;
+                    }
+                }
+            }
+
+            // If no same-direction candidate found (all remaining pickups are behind),
+            // fall back to considering all pickups (passengers have been dropped off by now
+            // or direction will naturally reverse after serving current passengers)
+            if (bestPair == null)
+            {
+                foreach (var p in pairs)
+                {
+                    if (!p.PickupAlreadyReached && !p.PickupVisited)
+                    {
+                        int dist = Math.Abs(position - p.PickupFloor);
+                        if (dist < bestDistance)
+                        {
+                            bestDistance = dist;
+                            bestFloor = p.PickupFloor;
+                            bestPair = p;
+                            bestIsPickup = true;
+                        }
+                    }
+                }
+            }
+
+            if (bestPair == null) break;
+
+            order.Add(bestFloor);
+            totalDistance += bestDistance;
+            position = bestFloor;
+
+            if (bestIsPickup)
+                bestPair.PickupVisited = true;
+            else
+                bestPair.DestinationVisited = true;
+
+            // Update direction based on movement
+            if (order.Count >= 2)
+            {
+                int prev = order[order.Count - 2];
+                if (position != prev)
+                    direction = position > prev ? 1 : -1;
+            }
+            else if (position != currentFloor)
+            {
+                direction = position > currentFloor ? 1 : -1;
+            }
+        }
+
+        return (order, totalDistance);
+    }
+
+    private List<PairState> BuildRequestPairs(int elevatorIndex)
+    {
+        var pairs = new List<PairState>();
+
+        foreach (var kvp in _activeRequests)
+        {
+            var progress = kvp.Value;
+            if (progress.AssignedElevatorIndex != elevatorIndex || progress.IsComplete)
+                continue;
+
+            pairs.Add(new PairState
+            {
+                PickupFloor = progress.PickupFloor,
+                DestinationFloor = progress.DestinationFloor,
+                PickupAlreadyReached = progress.PickupReached
+            });
+        }
+
+        return pairs;
+    }
+
+    private int? FindBestElevatorCustom(Request request)
+    {
+        lock (_dispatchLock)
+        {
+            int? bestIndex = null;
+            int bestTotalDistance = int.MaxValue;
+
+            var allEligible = new List<(int index, int distance)>();
+
+            for (int i = 0; i < _elevators.Count; i++)
+            {
+                var elevator = _elevators[i];
+
+                // Skip elevators in maintenance or emergency stop
+                if (elevator.InMaintenance || elevator.InEmergencyStop)
+                    continue;
+
+                // Skip elevators that can't serve pickup or destination floor
+                if (!elevator.CanServeFloor(request.PickupFloor) ||
+                    !elevator.CanServeFloor(request.DestinationFloor))
+                    continue;
+
+                // Skip Freight elevators for non-freight requests
+                if (elevator.Type == ElevatorType.Freight &&
+                    request.PreferredElevatorType != ElevatorType.Freight)
+                    continue;
+
+                allEligible.Add((i, CalculateDistance(elevator.CurrentFloor, request.PickupFloor)));
+            }
+
+            if (!allEligible.Any())
+                return null;
+
+            // If a preferred elevator type is set, filter to matching elevators first
+            if (request.PreferredElevatorType.HasValue)
+            {
+                var preferred = allEligible
+                    .Where(e => _elevators[e.index].Type == request.PreferredElevatorType.Value)
+                    .ToList();
+
+                if (preferred.Any())
+                    allEligible = preferred;
+            }
+
+            // For HIGH priority, ignore optimization and return closest
+            if (request.Priority == RequestPriority.High)
+            {
+                return allEligible.OrderBy(e => e.distance).First().index;
+            }
+
+            // Score each elevator by simulated total travel distance
+            foreach (var (index, _) in allEligible)
+            {
+                var elevator = _elevators[index];
+                var pairs = BuildRequestPairs(index);
+
+                // Add the new request as a pair
+                pairs.Add(new PairState
+                {
+                    PickupFloor = request.PickupFloor,
+                    DestinationFloor = request.DestinationFloor,
+                    PickupAlreadyReached = false
+                });
+
+                var (_, totalDistance) = CalculateOptimalOrder(elevator.CurrentFloor, pairs);
+
+                if (totalDistance < bestTotalDistance)
+                {
+                    bestTotalDistance = totalDistance;
+                    bestIndex = index;
+                }
+            }
+
+            return bestIndex;
+        }
+    }
+
+    private void ReorderElevatorTargets(int elevatorIndex)
+    {
+        lock (_targetLock)
+        {
+            var pairs = BuildRequestPairs(elevatorIndex);
+
+            if (pairs.Count == 0) return;
+
+            var elevator = _elevators[elevatorIndex];
+            var (order, _) = CalculateOptimalOrder(elevator.CurrentFloor, pairs);
+
+            // Deduplicate consecutive stops only: if two adjacent entries are the same floor
+            // a single stop covers both (e.g. two pickups at the same floor → [5,5] → [5]).
+            // Do NOT remove non-consecutive duplicates — the same floor may legitimately appear
+            // twice in the route (e.g. [1, 5, 1]: drop off, go pick up, come back to drop off).
+            var deduped = new List<int>();
+            foreach (var floor in order)
+            {
+                if (deduped.Count == 0 || deduped[^1] != floor)
+                    deduped.Add(floor);
+            }
+
+            _elevatorTargets[elevatorIndex] = new Queue<int>(deduped);
         }
     }
 
