@@ -74,7 +74,7 @@ export function ElevatorShaft({
 
   return (
     <Card className="w-36 flex-shrink-0">
-      <CardHeader className="px-3 py-2 space-y-1 h-[5.5rem]">
+      <CardHeader className="px-3 py-2 space-y-1 h-[6.5rem]">
         <CardTitle className="text-sm font-semibold text-center">
           {elevator.label}
         </CardTitle>
@@ -135,7 +135,7 @@ export function ElevatorShaft({
         </Button>
 
         <a
-          href={`http://localhost:5081/api/logs/${elevator.label}`}
+          href={`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5081"}/api/logs/${elevator.label}`}
           download={`elevator_${elevator.label}.log`}
           className="block w-full mt-1"
         >

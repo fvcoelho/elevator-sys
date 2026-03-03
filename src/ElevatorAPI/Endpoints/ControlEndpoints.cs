@@ -40,6 +40,13 @@ public static class ControlEndpoints
         })
         .WithName("EmergencyResume");
 
+        group.MapPost("/reset", async (ElevatorSystemHolder holder) =>
+        {
+            await holder.ResetAsync(holder.CurrentOptions);
+            return Results.Ok(new { Message = "System reset" });
+        })
+        .WithName("ResetSystem");
+
         group.MapPost("/elevators/{index:int}/maintenance", (int index, ElevatorSystemHolder holder) =>
         {
             var system = holder.Current;
