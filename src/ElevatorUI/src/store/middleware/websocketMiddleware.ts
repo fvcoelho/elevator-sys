@@ -15,7 +15,8 @@ import {
   scheduleReturnTrip,
 } from "../slices/passengersSlice";
 
-const WS_URL = "ws://localhost:5081/ws";
+const WS_URL =
+  (process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:5081") + "/ws";
 const MAX_BACKOFF_MS = 10000;
 
 // Use loose typing to avoid circular dep with store/index.ts

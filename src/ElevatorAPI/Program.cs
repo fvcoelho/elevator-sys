@@ -27,7 +27,9 @@ builder.Services.AddCors(opts =>
 {
     opts.AddPolicy("Frontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(
+                  "http://localhost:3000",
+                  "https://elevator.pegue.app")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -40,14 +42,15 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // Configure HTTP pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("Frontend");
 app.UseWebSockets();
+
+// Health endpoint at root (used by reverse proxies and monitoring)
+app.MapGet("/", () => Results.Ok(new { status = "healthy", service = "ElevatorAPI" }))
+   .ExcludeFromDescription();
 
 // WebSocket endpoint
 app.Map("/ws", async (HttpContext context, WebSocketBroadcastService broadcaster) =>

@@ -10,7 +10,8 @@ import type {
   AddElevatorDto,
 } from "@/types/elevator";
 
-const API_BASE = "http://localhost:5081/api";
+const API_BASE =
+  (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5081") + "/api";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
